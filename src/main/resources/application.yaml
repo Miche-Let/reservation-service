@@ -1,3 +1,11 @@
 spring:
   application:
     name: reservation-service
+
+server:
+  port: 19500
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:19090/eureka/
