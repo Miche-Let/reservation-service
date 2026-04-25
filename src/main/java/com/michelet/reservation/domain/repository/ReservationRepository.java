@@ -1,5 +1,5 @@
 package com.michelet.reservation.domain.repository;
 
-public class ReservationRepository {
+public interface ReservationRepository {
 
 }
