@@ -25,7 +25,7 @@ replay_pid*
 
 #docs
 docs/
-.claude/
+../../reservation-service/.claude/
 
 HELP.md
 .gradle
