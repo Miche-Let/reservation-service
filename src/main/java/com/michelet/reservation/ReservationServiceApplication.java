@@ -1,4 +1,4 @@
-package com.michelet.reservation_service;
+package com.michelet.reservation;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
