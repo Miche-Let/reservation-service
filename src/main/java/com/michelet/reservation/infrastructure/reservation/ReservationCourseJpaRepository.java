@@ -1,8 +1,8 @@
 package com.michelet.reservation.infrastructure.reservation;
 
-import com.michelet.reservation.domain.repository.ReservationRepository;
+import com.michelet.reservation.domain.repository.ReservationCourseRepository;
 
-public class ReservationCourseJpaRepository implements ReservationRepository {
+public class ReservationCourseJpaRepository implements ReservationCourseRepository {
 
 
 }
