@@ -66,3 +66,5 @@ out/
 .vscode/
 
 .env
+
+docker-compose.yml
