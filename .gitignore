@@ -67,4 +67,4 @@ out/
 
 .env
 
-docker-compose-reservation.yml
+docker-compose.reservation.yml
