@@ -1,5 +1,6 @@
 package com.michelet.reservation.infrastructure.reservation.entity;
 
+import com.michelet.common.entity.BaseEntity;
 import com.michelet.reservation.domain.enums.ReservationStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,7 +22,7 @@ import java.util.UUID;
 @Table(name = "p_reservations")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ReservationJpaEntity /* extends BaseEntity */ {
+public class ReservationJpaEntity extends BaseEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)

@@ -1,11 +1,12 @@
 package com.michelet.reservation.domain.exception;
 
+import com.michelet.common.exception.ErrorCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public enum ReservationErrorCode {
+public enum ReservationErrorCode implements ErrorCode {
 
   RESERVATION_NOT_FOUND("RESERVATION_001", "예약을 찾을 수 없습니다.", 404),
   ALREADY_CANCELLED("RESERVATION_002", "이미 취소된 예약입니다.", 400),
@@ -18,4 +19,8 @@ public enum ReservationErrorCode {
   private final String code;
   private final String message;
   private final int httpStatus;
+
+  @Override public String getCode()     { return code; }
+  @Override public String getMessage()  { return message; }
+  @Override public int getHttpStatus()  { return httpStatus; }
 }

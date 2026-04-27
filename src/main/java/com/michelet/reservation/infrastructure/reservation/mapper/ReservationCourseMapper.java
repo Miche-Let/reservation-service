@@ -6,11 +6,6 @@ import com.michelet.reservation.infrastructure.reservation.entity.ReservationCou
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
-/**
- * 수동 매핑 선택 이유
- *   - Money VO 의 of() 팩토리 사용
- *   - DB 컬럼 오타(cource_id, quntitty)를 매퍼에서 명시적으로 처리
- */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class ReservationCourseMapper {
 

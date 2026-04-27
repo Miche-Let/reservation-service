@@ -3,7 +3,6 @@ package com.michelet.reservation.domain.entity;
 import com.michelet.reservation.domain.enums.ReservationStatus;
 import com.michelet.reservation.domain.exception.ReservationErrorCode;
 import com.michelet.reservation.domain.vo.GuestCount;
-//import com.michelet.common.entity;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
