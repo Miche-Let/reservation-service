@@ -139,7 +139,12 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     private Reservation findAndVerifyOwnership(UUID reservationId, UUID userId, String userRole) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
-        if (!isPrivileged(userRole) && !reservation.getUserId().equals(userId)) {
+        if (isPrivileged(userRole)) {
+            // TODO: OWNER 역할일 경우 restaurant-service RestaurantClient(Feign) 구현 후 식당 소유권 검증 추가
+            // ⚠️ OWNER 식당 소유권 미검증 — RestaurantClient Feign 보류 중
+            return reservation;
+        }
+        if (!reservation.getUserId().equals(userId)) {
             throw new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND);
         }
         return reservation;
