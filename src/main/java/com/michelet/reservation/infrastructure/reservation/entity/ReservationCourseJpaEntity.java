@@ -38,7 +38,6 @@ public class ReservationCourseJpaEntity  extends BaseJpaEntity {
   ) {
     ReservationCourseJpaEntity e = new ReservationCourseJpaEntity();
     e.id            = id;
-    e.markNew();
     e.reservationId = reservationId;
     e.courseId      = courseId;
     e.quantity      = quantity;
