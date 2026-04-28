@@ -11,9 +11,10 @@ RUN ./gradlew bootJar --no-daemon
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
-
+RUN groupadd --system app && useradd --system --gid app app
 COPY --from=builder /app/build/libs/*.jar app.jar
-
+RUN chown -R app:app /app
+USER app
 EXPOSE 19500
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
