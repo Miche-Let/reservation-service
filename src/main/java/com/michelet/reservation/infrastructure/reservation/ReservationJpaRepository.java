@@ -64,6 +64,7 @@ public class ReservationJpaRepository implements ReservationRepository {
 
   @Override
   public Optional<Reservation> findConfirmedByUserIdAndRestaurantId(UUID userId, UUID restaurantId) {
+    // 존재 여부만 확인하므로 ORDER BY 불필요 — 정렬 생략으로 LIMIT 1 조기 종료 성능 유지
     return jpaStore.findFirstByUserIdAndRestaurantIdAndStatus(userId, restaurantId, ReservationStatus.CONFIRMED)
         .map(ReservationMapper::toDomain);
   }

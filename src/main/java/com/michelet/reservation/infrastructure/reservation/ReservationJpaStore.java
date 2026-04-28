@@ -20,6 +20,7 @@ public interface ReservationJpaStore extends JpaRepository<ReservationJpaEntity,
 
   Page<ReservationJpaEntity> findAllByUserIdAndStatus(UUID userId, ReservationStatus status, Pageable pageable);
 
+  // 존재 여부 확인 용도 — 여러 건 중 어느 것이 반환되어도 무방하므로 ORDER BY 생략 (LIMIT 1 성능 우선)
   Optional<ReservationJpaEntity> findFirstByUserIdAndRestaurantIdAndStatus(
       UUID userId, UUID restaurantId, ReservationStatus status);
 
