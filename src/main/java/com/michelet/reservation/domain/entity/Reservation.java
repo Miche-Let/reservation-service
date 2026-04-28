@@ -1,5 +1,6 @@
 package com.michelet.reservation.domain.entity;
 
+import com.michelet.common.exception.BusinessException;
 import com.michelet.reservation.domain.enums.ReservationStatus;
 import com.michelet.reservation.domain.exception.ReservationErrorCode;
 import com.michelet.reservation.domain.vo.GuestCount;
@@ -80,8 +81,7 @@ public class Reservation {
   public void cancel() {
     validateTransition(ReservationStatus.CONFIRMED);
     if (LocalDate.now().isAfter(cancelDeadline)) {
-      throw new IllegalStateException(
-          ReservationErrorCode.CANCEL_DEADLINE_EXCEEDED.getMessage());
+      throw new BusinessException(ReservationErrorCode.CANCEL_DEADLINE_EXCEEDED);
     }
     this.status = ReservationStatus.CANCELLED;
   }
@@ -103,8 +103,7 @@ public class Reservation {
   ) {
     validateTransition(ReservationStatus.CONFIRMED);
     if (LocalDate.now().isAfter(modifyDeadline)) {
-      throw new IllegalStateException(
-          ReservationErrorCode.MODIFY_DEADLINE_EXCEEDED.getMessage());
+      throw new BusinessException(ReservationErrorCode.MODIFY_DEADLINE_EXCEEDED);
     }
     this.reservedDate   = newReservedDate;
     this.guestCount     = newGuestCount;
@@ -115,9 +114,7 @@ public class Reservation {
 
   private void validateTransition(ReservationStatus required) {
     if (this.status != required) {
-      throw new IllegalStateException(
-          ReservationErrorCode.INVALID_STATUS_TRANSITION.getMessage()
-              + " [current=" + this.status + "]");
+      throw new BusinessException(ReservationErrorCode.INVALID_STATUS_TRANSITION);
     }
   }
 }
