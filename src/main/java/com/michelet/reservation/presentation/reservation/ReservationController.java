@@ -30,58 +30,55 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ReservationController {
 
-    //  private final ReservationCommandService commandService;
-    private final ReservationQueryService queryService;
+//  private final ReservationCommandService commandService;
+  private final ReservationQueryService queryService;
 
-    /* 권한: USER */
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<ReservationResponse> create(
-            @RequestHeader("X-User-Id") UUID userId,
-            @RequestHeader("X-User-Role") String userRole,
-            @RequestBody @Valid CreateReservationRequest request
-    ) {
-        // TODO: return ApiResponse.ok(commandService.create(userId, request));
-        throw new UnsupportedOperationException("구현 예정");
-    }
+  /* 권한: USER */
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public ApiResponse<ReservationResponse> create(
+      @RequestHeader("X-User-Id") UUID userId,
+      @RequestHeader("X-User-Role") String userRole,
+      @RequestBody @Valid CreateReservationRequest request
+  ) {
+    // TODO: return ApiResponse.ok(commandService.create(userId, request));
+    throw new UnsupportedOperationException("구현 예정");
+  }
 
-    /* 권한: USER */
-    @GetMapping
-    public ApiResponse<Page<ReservationSummaryResponse>> getMyReservations(
-            @RequestHeader("X-User-Id") UUID userId,
-            @RequestParam(required = false) ReservationStatus status,
-            @PageableDefault(size = 10) Pageable pageable
-    ) {
-        Page<ReservationSummaryResponse> response = queryService.getList(userId, status, pageable)
-                .map(ReservationSummaryResponse::from);
-        return ApiResponse.ok(response);
-    }
+  /* 권한: USER */
+  @GetMapping
+  public ApiResponse<Page<ReservationSummaryResponse>> getMyReservations(
+      @RequestHeader("X-User-Id") UUID userId,
+      @RequestParam(required = false) ReservationStatus status,
+      @PageableDefault(size = 10) Pageable pageable
+  ) {
+    Page<ReservationSummaryResponse> response = queryService.getList(userId, status, pageable)
+        .map(ReservationSummaryResponse::from);
+    return ApiResponse.ok(response);
+  }
 
-    /* 권한: USER·OWNER·MASTER */
-    @GetMapping("/{reservationId}")
-    public ApiResponse<ReservationResponse> getReservation(
-            @RequestHeader("X-User-Id") UUID userId,
-            @RequestHeader("X-User-Role") String userRole,
-            @PathVariable UUID reservationId
-    ) {
-        ReservationResponse response = ReservationResponse.from(
-                queryService.getDetail(userId, userRole, reservationId)
-        );
-        return ApiResponse.ok(response);
-    }
+  /* 권한: USER·OWNER·MASTER */
+  @GetMapping("/{reservationId}")
+  public ApiResponse<ReservationResponse> getReservation(
+      @RequestHeader("X-User-Id") UUID userId,
+      @RequestHeader("X-User-Role") String userRole,
+      @PathVariable UUID reservationId
+  ) {
+    ReservationResponse response = ReservationResponse.from(
+        queryService.getDetail(userId, userRole, reservationId)
+    );
+    return ApiResponse.ok(response);
+  }
 
-    /**
-     * 권한: USER·OWNER·MASTER 조건: CONFIRMED + modify_deadline 이내
-     */
-    @PatchMapping("/{reservationId}")
-    public ApiResponse<ReservationResponse> modify(
-            @RequestHeader("X-User-Id") UUID userId,
-            @RequestHeader("X-User-Role") String userRole,
-            @PathVariable UUID reservationId,
-            @RequestBody @Valid ModifyReservationRequest request
-    ) {
-        // TODO: return ApiResponse.ok(commandService.modify(userId, userRole, reservationId, request));
-        throw new UnsupportedOperationException("구현 예정");
-    }
-
+  /* 권한: USER·OWNER·MASTER — 조건: CONFIRMED + modify_deadline 이내 */
+  @PatchMapping("/{reservationId}")
+  public ApiResponse<ReservationResponse> modify(
+      @RequestHeader("X-User-Id") UUID userId,
+      @RequestHeader("X-User-Role") String userRole,
+      @PathVariable UUID reservationId,
+      @RequestBody @Valid ModifyReservationRequest request
+  ) {
+    // TODO: return ApiResponse.ok(commandService.modify(userId, userRole, reservationId, request));
+    throw new UnsupportedOperationException("구현 예정");
+  }
 }
