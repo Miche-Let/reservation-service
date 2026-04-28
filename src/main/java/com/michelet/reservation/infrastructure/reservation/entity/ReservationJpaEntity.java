@@ -1,13 +1,11 @@
 package com.michelet.reservation.infrastructure.reservation.entity;
 
-import com.michelet.common.entity.BaseEntity;
 import com.michelet.reservation.domain.enums.ReservationStatus;
+import com.michelet.reservation.infrastructure.reservation.common.BaseJpaEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -22,10 +20,9 @@ import java.util.UUID;
 @Table(name = "p_reservations")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ReservationJpaEntity extends BaseEntity {
+public class ReservationJpaEntity  extends BaseJpaEntity {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.UUID)
   @Column(name = "id", columnDefinition = "uuid", updatable = false, nullable = false)
   private UUID id;
 
@@ -64,6 +61,7 @@ public class ReservationJpaEntity extends BaseEntity {
   ) {
     ReservationJpaEntity e = new ReservationJpaEntity();
     e.id             = id;
+    e.markNew();
     e.userId         = userId;
     e.restaurantId   = restaurantId;
     e.timeSlotId     = timeSlotId;

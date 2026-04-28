@@ -1,5 +1,7 @@
 package com.michelet.reservation.domain.entity;
 
+import com.michelet.common.exception.BusinessException;
+import com.michelet.reservation.domain.exception.ReservationErrorCode;
 import com.michelet.reservation.domain.vo.Money;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -26,6 +28,7 @@ public class ReservationCourse {
       int quantity,
       Money unitPrice
   ) {
+    validateInput(reservationId, courseId, quantity, unitPrice);
     ReservationCourse c = new ReservationCourse();
     c.id            = UUID.randomUUID();
     c.reservationId = reservationId;
@@ -42,6 +45,7 @@ public class ReservationCourse {
       int quantity,
       Money unitPrice
   ) {
+    validateInput(reservationId, courseId, quantity, unitPrice);
     ReservationCourse c = new ReservationCourse();
     c.id            = id;
     c.reservationId = reservationId;
@@ -53,5 +57,25 @@ public class ReservationCourse {
 
   public Money totalPrice() {
     return unitPrice.multiply(quantity);
+  }
+
+  private static void validateInput(
+      UUID reservationId,
+      UUID courseId,
+      int quantity,
+      Money unitPrice
+  ) {
+    if (reservationId == null) {
+      throw new BusinessException(ReservationErrorCode.INVALID_RESERVATION_ID);
+    }
+    if (courseId == null) {
+      throw new BusinessException(ReservationErrorCode.INVALID_COURSE_ID);
+    }
+    if (unitPrice == null) {
+      throw new BusinessException(ReservationErrorCode.INVALID_UNIT_PRICE);
+    }
+    if (quantity <= 0) {
+      throw new BusinessException(ReservationErrorCode.INVALID_COURSE_QUANTITY);
+    }
   }
 }

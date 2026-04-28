@@ -1,10 +1,13 @@
 package com.michelet.reservation.domain.vo;
 
+import com.michelet.common.exception.BusinessException;
+import com.michelet.reservation.domain.exception.ReservationErrorCode;
+
 public record Money(int value) {
 
   public Money {
     if (value < 0) {
-      throw new IllegalArgumentException("금액은 0원 이상이어야 합니다.");
+      throw new BusinessException(ReservationErrorCode.INVALID_MONEY_AMOUNT);
     }
   }
 
@@ -13,10 +16,21 @@ public record Money(int value) {
   }
 
   public Money add(Money other) {
-    return new Money(this.value + other.value);
+    try {
+      return new Money(Math.addExact(this.value, other.value));
+    } catch (ArithmeticException e) {
+      throw new BusinessException(ReservationErrorCode.MONEY_OVERFLOW);
+    }
   }
 
   public Money multiply(int quantity) {
-    return new Money(this.value * quantity);
+    if (quantity < 0) {
+      throw new BusinessException(ReservationErrorCode.INVALID_MULTIPLY_QUANTITY);
+    }
+    try {
+      return new Money(Math.multiplyExact(this.value, quantity));
+    } catch (ArithmeticException e) {
+      throw new BusinessException(ReservationErrorCode.MONEY_OVERFLOW);
+    }
   }
 }
