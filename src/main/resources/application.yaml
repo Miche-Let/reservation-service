@@ -36,5 +36,11 @@ spring:
 #    service-url:
 #      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:19090}/eureka/
 
+feign:
+  timeslot-service:
+    url: http://localhost:19400
+  ticket-service:
+    url: http://localhost:19900
+
 server:
   port: 19500

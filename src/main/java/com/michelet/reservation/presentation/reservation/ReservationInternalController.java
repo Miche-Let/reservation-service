@@ -3,11 +3,13 @@ package com.michelet.reservation.presentation.reservation;
 import com.michelet.common.response.ApiResponse;
 import com.michelet.reservation.application.reservation.ReservationCommandService;
 import com.michelet.reservation.application.reservation.ReservationQueryService;
+import com.michelet.reservation.application.reservation.command.CheckInCommand;
 import com.michelet.reservation.presentation.reservation.dto.request.CheckInRequest;
 import com.michelet.reservation.presentation.reservation.dto.response.ReservationExistsResponse;
 import com.michelet.reservation.presentation.reservation.dto.response.ReservationStatusResponse;
 import com.michelet.reservation.presentation.reservation.dto.response.ReservationValidityResponse;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -16,14 +18,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.UUID;
-
 @RestController
 @RequestMapping("/internal/reservations")
 @RequiredArgsConstructor
 public class ReservationInternalController {
 
-//  private final ReservationCommandService commandService;
+  private final ReservationCommandService commandService;
   private final ReservationQueryService queryService;
 
   @GetMapping("/validity")
@@ -40,8 +40,9 @@ public class ReservationInternalController {
   public ApiResponse<ReservationStatusResponse> checkIn(
       @RequestBody @Valid CheckInRequest request
   ) {
-    // TODO: return ApiResponse.ok(commandService.checkIn(request));
-    throw new UnsupportedOperationException("구현 예정");
+    return ApiResponse.ok(ReservationStatusResponse.from(
+        commandService.checkIn(CheckInCommand.from(request))
+    ));
   }
 
   @GetMapping("/exists")
