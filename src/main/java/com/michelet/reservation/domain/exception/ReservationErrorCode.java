@@ -19,9 +19,9 @@ public enum ReservationErrorCode implements ErrorCode {
   INVALID_COURSE_ID      ("RESERVATION_009", "코스 ID는 필수입니다.", 400),
   INVALID_RESERVATION_ID ("RESERVATION_010", "예약 ID는 필수입니다.", 400),
   INVALID_UNIT_PRICE     ("RESERVATION_011", "단가 정보는 필수입니다.", 400),
-  INVALID_MONEY_AMOUNT     ("RESERVATION_008", "금액은 0원 이상이어야 합니다.", 400),
-  INVALID_MULTIPLY_QUANTITY("RESERVATION_009", "수량은 0 이상이어야 합니다.", 400),
-  MONEY_OVERFLOW           ("RESERVATION_010", "금액 계산 결과가 허용 범위를 초과하였습니다.", 400);
+  INVALID_MONEY_AMOUNT     ("RESERVATION_012", "금액은 0원 이상이어야 합니다.", 400),
+  INVALID_MULTIPLY_QUANTITY("RESERVATION_013", "수량은 0 이상이어야 합니다.", 400),
+  MONEY_OVERFLOW           ("RESERVATION_014", "금액 계산 결과가 허용 범위를 초과하였습니다.", 400);
 
   private final String code;
   private final String message;
