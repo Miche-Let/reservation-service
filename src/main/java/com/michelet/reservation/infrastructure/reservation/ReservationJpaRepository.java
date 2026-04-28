@@ -6,6 +6,8 @@ import com.michelet.reservation.domain.repository.ReservationRepository;
 import com.michelet.reservation.infrastructure.reservation.entity.ReservationJpaEntity;
 import com.michelet.reservation.infrastructure.reservation.mapper.ReservationMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -46,6 +48,25 @@ public class ReservationJpaRepository implements ReservationRepository {
         .stream()
         .map(ReservationMapper::toDomain)
         .collect(Collectors.toList());
+  }
+
+  @Override
+  public Page<Reservation> findPageByUserId(UUID userId, Pageable pageable) {
+    return jpaStore.findAllByUserId(userId, pageable)
+        .map(ReservationMapper::toDomain);
+  }
+
+  @Override
+  public Page<Reservation> findPageByUserIdAndStatus(UUID userId, ReservationStatus status, Pageable pageable) {
+    return jpaStore.findAllByUserIdAndStatus(userId, status, pageable)
+        .map(ReservationMapper::toDomain);
+  }
+
+  @Override
+  public Optional<Reservation> findConfirmedByUserIdAndRestaurantId(UUID userId, UUID restaurantId) {
+    // 존재 여부만 확인하므로 ORDER BY 불필요 — 정렬 생략으로 LIMIT 1 조기 종료 성능 유지
+    return jpaStore.findFirstByUserIdAndRestaurantIdAndStatus(userId, restaurantId, ReservationStatus.CONFIRMED)
+        .map(ReservationMapper::toDomain);
   }
 
   @Override

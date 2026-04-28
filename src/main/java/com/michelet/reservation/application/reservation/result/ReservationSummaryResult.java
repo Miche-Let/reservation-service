@@ -4,36 +4,26 @@ import com.michelet.reservation.domain.entity.Reservation;
 import com.michelet.reservation.domain.enums.ReservationStatus;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
-public record ReservationResult(
+public record ReservationSummaryResult(
     UUID reservationId,
-    UUID userId,
     UUID restaurantId,
-    UUID timeSlotId,
     LocalDate reservedDate,
     int guestCount,
     ReservationStatus status,
     LocalDate cancelDeadline,
-    LocalDate modifyDeadline,
-    LocalDateTime noshowDeadline,
-    List<ReservationCourseResult> courses
+    LocalDate modifyDeadline
 ) {
-  public static ReservationResult of(Reservation r, List<ReservationCourseResult> courses) {
-    return new ReservationResult(
+  public static ReservationSummaryResult from(Reservation r) {
+    return new ReservationSummaryResult(
         r.getId(),
-        r.getUserId(),
         r.getRestaurantId(),
-        r.getTimeSlotId(),
         r.getReservedDate(),
         r.getGuestCount().value(),
         r.getStatus(),
         r.getCancelDeadline(),
-        r.getModifyDeadline(),
-        r.getNoshowDeadline(),
-        courses
+        r.getModifyDeadline()
     );
   }
 }
