@@ -1,6 +1,8 @@
 package com.michelet.reservation.presentation.reservation;
 
 import com.michelet.common.response.ApiResponse;
+import com.michelet.reservation.application.reservation.ReservationCommandService;
+import com.michelet.reservation.application.reservation.ReservationQueryService;
 import com.michelet.reservation.presentation.reservation.dto.request.CreateReservationRequest;
 import com.michelet.reservation.presentation.reservation.dto.request.ModifyReservationRequest;
 import com.michelet.reservation.presentation.reservation.dto.response.ReservationResponse;
@@ -20,7 +22,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ReservationController {
 
-  // TODO: ReservationCommandService commandService, ReservationQueryService queryService 주입
+//  private final ReservationCommandService commandService;
+//  private final ReservationQueryService queryService;
 
   /* 권한: USER */
   @PostMapping

@@ -8,6 +8,6 @@ import java.util.UUID;
 public record ReservationStatusResponse(
     UUID reservationId,
     ReservationStatus status,
-    LocalDateTime confirmedAt,   // confirm 전용, expire 시 null
-    LocalDateTime expiredAt      // expire 전용, confirm 시 null
+    LocalDateTime confirmedAt,
+    LocalDateTime endedAt
 ) {}

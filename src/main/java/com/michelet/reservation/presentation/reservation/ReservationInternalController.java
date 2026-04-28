@@ -1,6 +1,8 @@
 package com.michelet.reservation.presentation.reservation;
 
 import com.michelet.common.response.ApiResponse;
+import com.michelet.reservation.application.reservation.ReservationCommandService;
+import com.michelet.reservation.application.reservation.ReservationQueryService;
 import com.michelet.reservation.presentation.reservation.dto.request.CheckInRequest;
 import com.michelet.reservation.presentation.reservation.dto.response.ReservationExistsResponse;
 import com.michelet.reservation.presentation.reservation.dto.response.ReservationStatusResponse;
@@ -16,7 +18,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ReservationInternalController {
 
-  // TODO: ReservationCommandService commandService, ReservationQueryService queryService 주입
+//  private final ReservationCommandService commandService;
+//  private final ReservationQueryService queryService;
 
   @GetMapping("/validity")
   public ApiResponse<ReservationValidityResponse> checkValidity(
