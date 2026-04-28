@@ -45,6 +45,9 @@ public class ReservationCourse {
       int quantity,
       Money unitPrice
   ) {
+    if (id == null) {
+      throw new BusinessException(ReservationErrorCode.INVALID_COURSE_INSTANCE_ID);
+    }
     validateInput(reservationId, courseId, quantity, unitPrice);
     ReservationCourse c = new ReservationCourse();
     c.id            = id;

@@ -38,6 +38,7 @@ public class Reservation {
       GuestCount guestCount,
       LocalDateTime noshowDeadline
   ) {
+    validateCreateInput(userId, restaurantId, timeSlotId, reservedDate, guestCount);
     Reservation r = new Reservation();
     r.id             = UUID.randomUUID();
     r.userId         = userId;
@@ -48,7 +49,7 @@ public class Reservation {
     r.status         = ReservationStatus.CONFIRMED;
     r.cancelDeadline = reservedDate.minusDays(2);
     r.modifyDeadline = reservedDate.minusDays(2);
-    r.noshowDeadline = noshowDeadline;
+    r.noshowDeadline = noshowDeadline; // 타임슬롯 데이터를 가져와서 설정함
     return r;
   }
 
@@ -64,6 +65,7 @@ public class Reservation {
       LocalDate modifyDeadline,
       LocalDateTime noshowDeadline
   ) {
+    validateReconstituteInput(id,userId, restaurantId, timeSlotId, reservedDate, guestCount);
     Reservation r = new Reservation();
     r.id             = id;
     r.userId         = userId;
@@ -116,5 +118,34 @@ public class Reservation {
     if (this.status != required) {
       throw new BusinessException(ReservationErrorCode.INVALID_STATUS_TRANSITION);
     }
+  }
+
+  private static void validateCreateInput(
+      UUID userId,
+      UUID restaurantId,
+      UUID timeSlotId,
+      LocalDate reservedDate,
+      GuestCount guestCount) {
+    if (userId == null)         throw new BusinessException(ReservationErrorCode.INVALID_USER_ID);
+    if (restaurantId == null)   throw new BusinessException(ReservationErrorCode.INVALID_RESTAURANT_ID);
+    if (timeSlotId == null)     throw new BusinessException(ReservationErrorCode.INVALID_TIME_SLOT_ID);
+    if (reservedDate == null)   throw new BusinessException(ReservationErrorCode.INVALID_RESERVED_DATE);
+    if (guestCount == null)     throw new BusinessException(ReservationErrorCode.INVALID_GUEST_COUNT_NULL);
+  }
+
+  private static void validateReconstituteInput(
+      UUID id,
+      UUID userId,
+      UUID restaurantId,
+      UUID timeSlotId,
+      LocalDate reservedDate,
+      GuestCount guestCount
+  ) {
+    if (id == null)            throw new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND);
+    if (userId == null)        throw new BusinessException(ReservationErrorCode.INVALID_USER_ID);
+    if (restaurantId == null)  throw new BusinessException(ReservationErrorCode.INVALID_RESTAURANT_ID);
+    if (timeSlotId == null)    throw new BusinessException(ReservationErrorCode.INVALID_TIME_SLOT_ID);
+    if (reservedDate == null)  throw new BusinessException(ReservationErrorCode.INVALID_RESERVED_DATE);
+    if (guestCount == null)    throw new BusinessException(ReservationErrorCode.INVALID_GUEST_COUNT_NULL);
   }
 }

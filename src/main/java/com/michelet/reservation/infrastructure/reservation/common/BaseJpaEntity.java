@@ -2,6 +2,8 @@ package com.michelet.reservation.infrastructure.reservation.common;
 
 import com.michelet.common.entity.BaseEntity;
 import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Transient;
 import java.util.UUID;
 import org.springframework.data.domain.Persistable;
@@ -17,4 +19,10 @@ public abstract class BaseJpaEntity extends BaseEntity   // common 라이브러�
   public boolean isNew() { return isNew; }
 
   protected void markNew() { this.isNew = true; }
+
+  @PostPersist
+  @PostLoad
+  protected void markNotNew() {
+    this.isNew = false;
+  }
 }
