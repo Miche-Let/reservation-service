@@ -2,6 +2,8 @@ package com.michelet.reservation.domain.repository;
 
 import com.michelet.reservation.domain.entity.Reservation;
 import com.michelet.reservation.domain.enums.ReservationStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +18,12 @@ public interface ReservationRepository {
   List<Reservation> findAllByUserId(UUID userId);
 
   List<Reservation> findAllByUserIdAndStatus(UUID userId, ReservationStatus status);
+
+  Page<Reservation> findPageByUserId(UUID userId, Pageable pageable);
+
+  Page<Reservation> findPageByUserIdAndStatus(UUID userId, ReservationStatus status, Pageable pageable);
+
+  Optional<Reservation> findConfirmedByUserIdAndRestaurantId(UUID userId, UUID restaurantId);
 
   boolean existsByUserIdAndTimeSlotIdAndStatusNot(UUID userId, UUID timeSlotId, ReservationStatus status);
 }

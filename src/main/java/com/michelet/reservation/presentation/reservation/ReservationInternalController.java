@@ -24,15 +24,16 @@ import java.util.UUID;
 public class ReservationInternalController {
 
 //  private final ReservationCommandService commandService;
-//  private final ReservationQueryService queryService;
+  private final ReservationQueryService queryService;
 
   @GetMapping("/validity")
   public ApiResponse<ReservationValidityResponse> checkValidity(
       @RequestParam UUID userId,
       @RequestParam UUID restaurantId
   ) {
-    // TODO: return ApiResponse.ok(queryService.checkValidity(userId, restaurantId));
-    throw new UnsupportedOperationException("구현 예정");
+    return ApiResponse.ok(ReservationValidityResponse.from(
+        queryService.checkValidity(userId, restaurantId)
+    ));
   }
 
   @PatchMapping("/check-in")
@@ -45,10 +46,12 @@ public class ReservationInternalController {
 
   @GetMapping("/exists")
   public ApiResponse<ReservationExistsResponse> checkExists(
+      @RequestParam UUID reservationId,
       @RequestParam UUID userId,
       @RequestParam UUID restaurantId
   ) {
-    // TODO: return ApiResponse.ok(queryService.checkExists(userId, restaurantId));
-    throw new UnsupportedOperationException("구현 예정");
+    return ApiResponse.ok(ReservationExistsResponse.from(
+        queryService.checkExists(reservationId, userId, restaurantId)
+    ));
   }
 }

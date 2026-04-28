@@ -1,5 +1,6 @@
 package com.michelet.reservation.presentation.reservation.dto.response;
 
+import com.michelet.reservation.application.reservation.result.ReservationResult;
 import com.michelet.reservation.domain.enums.ReservationStatus;
 
 import java.time.LocalDate;
@@ -19,4 +20,23 @@ public record ReservationResponse(
     LocalDate modifyDeadline,
     LocalDateTime noshowDeadline,
     List<ReservationCourseResponse> courses
-) {}
+) {
+  public static ReservationResponse from(ReservationResult result) {
+    List<ReservationCourseResponse> courses = result.courses().stream()
+        .map(ReservationCourseResponse::from)
+        .toList();
+    return new ReservationResponse(
+        result.reservationId(),
+        result.userId(),
+        result.restaurantId(),
+        result.timeSlotId(),
+        result.reservedDate(),
+        result.guestCount(),
+        result.status(),
+        result.cancelDeadline(),
+        result.modifyDeadline(),
+        result.noshowDeadline(),
+        courses
+    );
+  }
+}
