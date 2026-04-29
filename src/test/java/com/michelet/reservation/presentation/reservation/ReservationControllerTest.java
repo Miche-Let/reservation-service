@@ -1,56 +1,62 @@
 package com.michelet.reservation.presentation.reservation;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.michelet.common.exception.BusinessException;
-import com.michelet.common.exception.GlobalExceptionHandler;
-import com.michelet.reservation.application.reservation.ReservationCommandService;
-import com.michelet.reservation.application.reservation.ReservationQueryService;
-import com.michelet.reservation.application.reservation.result.ReservationCourseResult;
-import com.michelet.reservation.application.reservation.result.ReservationResult;
-import com.michelet.reservation.application.reservation.result.ReservationSummaryResult;
-import com.michelet.reservation.domain.enums.ReservationStatus;
-import com.michelet.reservation.domain.exception.ReservationErrorCode;
-import com.michelet.reservation.presentation.reservation.dto.request.CreateReservationRequest;
-import com.michelet.reservation.presentation.reservation.dto.request.ModifyReservationRequest;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.UUID;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.michelet.common.exception.BusinessException;
+import com.michelet.common.exception.GlobalExceptionHandler;
+import com.michelet.reservation.application.reservation.ReservationCommandService;
+import com.michelet.reservation.application.reservation.ReservationQueryService;
+import com.michelet.reservation.application.reservation.result.ReservationResult;
+import com.michelet.reservation.application.reservation.result.ReservationSummaryResult;
+import com.michelet.reservation.domain.enums.ReservationStatus;
+import com.michelet.reservation.domain.exception.ReservationErrorCode;
+import com.michelet.reservation.presentation.reservation.dto.request.CreateReservationRequest;
+import com.michelet.reservation.presentation.reservation.dto.request.ModifyReservationRequest;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(ReservationController.class)
 @Import(GlobalExceptionHandler.class)
 class ReservationControllerTest {
 
-    @Autowired MockMvc mockMvc;
-    @Autowired ObjectMapper objectMapper;
-    @MockitoBean ReservationCommandService commandService;
-    @MockitoBean ReservationQueryService queryService;
+    @Autowired
+    MockMvc mockMvc;
+    @Autowired
+    ObjectMapper objectMapper;
+    @MockitoBean
+    ReservationCommandService commandService;
+    @MockitoBean
+    ReservationQueryService queryService;
 
-    final UUID userId        = UUID.randomUUID();
-    final UUID restaurantId  = UUID.randomUUID();
-    final UUID timeSlotId    = UUID.randomUUID();
+    final UUID userId = UUID.randomUUID();
+    final UUID restaurantId = UUID.randomUUID();
+    final UUID timeSlotId = UUID.randomUUID();
     final UUID reservationId = UUID.randomUUID();
-    final LocalDate futureDate   = LocalDate.now().plusDays(10);
+    final LocalDate futureDate = LocalDate.now().plusDays(10);
     final LocalTime slotStartTime = LocalTime.of(19, 0);
 
     ReservationResult reservationResult() {

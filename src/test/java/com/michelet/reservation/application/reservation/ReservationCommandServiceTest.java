@@ -1,5 +1,15 @@
 package com.michelet.reservation.application.reservation;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.michelet.common.exception.BusinessException;
 import com.michelet.reservation.application.port.TimeSlotPort;
 import com.michelet.reservation.application.port.WaitingPort;
@@ -16,7 +26,12 @@ import com.michelet.reservation.domain.exception.ReservationErrorCode;
 import com.michelet.reservation.domain.repository.ReservationCourseRepository;
 import com.michelet.reservation.domain.repository.ReservationRepository;
 import com.michelet.reservation.domain.vo.GuestCount;
-import com.michelet.reservation.domain.vo.Money;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -25,34 +40,26 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-
 @ExtendWith(MockitoExtension.class)
 class ReservationCommandServiceTest {
 
-    @Mock ReservationRepository reservationRepository;
-    @Mock ReservationCourseRepository reservationCourseRepository;
-    @Mock TimeSlotPort timeSlotPort;
-    @Mock WaitingPort waitingPort;
+    @Mock
+    ReservationRepository reservationRepository;
+    @Mock
+    ReservationCourseRepository reservationCourseRepository;
+    @Mock
+    TimeSlotPort timeSlotPort;
+    @Mock
+    WaitingPort waitingPort;
 
-    @InjectMocks ReservationCommandServiceImpl commandService;
+    @InjectMocks
+    ReservationCommandServiceImpl commandService;
 
-    final UUID userId       = UUID.randomUUID();
+    final UUID userId = UUID.randomUUID();
     final UUID restaurantId = UUID.randomUUID();
-    final UUID timeSlotId   = UUID.randomUUID();
+    final UUID timeSlotId = UUID.randomUUID();
     final UUID reservationId = UUID.randomUUID();
-    final LocalDate futureDate  = LocalDate.now().plusDays(10);
+    final LocalDate futureDate = LocalDate.now().plusDays(10);
     final LocalTime slotStartTime = LocalTime.of(19, 0);
 
     Reservation confirmedReservation() {
