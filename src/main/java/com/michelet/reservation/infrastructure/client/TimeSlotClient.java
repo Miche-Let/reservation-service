@@ -15,11 +15,11 @@ import java.util.UUID;
 public interface TimeSlotClient {
 
   @GetMapping("/internal/timeslots/{timeSlotId}")
-  ApiResponse<TimeSlotResponse> getTimeSlot(@PathVariable UUID timeSlotId);
+  ApiResponse<TimeSlotResponse> getTimeSlot(@PathVariable("timeSlotId") UUID timeSlotId);
 
   @PatchMapping("/internal/timeslots/{timeSlotId}/decrement")
-  ApiResponse<Void> decrementStock(@PathVariable UUID timeSlotId, @RequestParam LocalDate date);
+  ApiResponse<Void> decrementStock(@PathVariable("timeSlotId") UUID timeSlotId, @RequestParam("date") LocalDate date);
 
   @PatchMapping("/internal/timeslots/{timeSlotId}/increment")
-  ApiResponse<Void> incrementStock(@PathVariable UUID timeSlotId, @RequestParam LocalDate date);
+  ApiResponse<Void> incrementStock(@PathVariable("timeSlotId") UUID timeSlotId, @RequestParam("date") LocalDate date);
 }

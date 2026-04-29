@@ -12,6 +12,7 @@ import com.michelet.reservation.presentation.reservation.dto.request.ModifyReser
 import com.michelet.reservation.presentation.reservation.dto.response.ReservationResponse;
 import com.michelet.reservation.presentation.reservation.dto.response.ReservationSummaryResponse;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -46,8 +47,14 @@ public class ReservationController {
       @RequestHeader("X-User-Role") String userRole,
       @RequestBody @Valid CreateReservationRequest request
   ) {
+    List<CreateReservationCommand.CourseItem> courses = request.courses().stream()
+        .map(c -> new CreateReservationCommand.CourseItem(c.courseId(), c.quantity()))
+        .toList();
     ReservationResponse response = ReservationResponse.from(
-        commandService.create(CreateReservationCommand.of(userId, request))
+        commandService.create(new CreateReservationCommand(
+            userId, request.restaurantId(), request.timeSlotId(),
+            request.reservedDate(), request.guestCount(), courses
+        ))
     );
     return ApiResponse.ok(response);
   }
@@ -85,8 +92,15 @@ public class ReservationController {
       @PathVariable UUID reservationId,
       @RequestBody @Valid ModifyReservationRequest request
   ) {
+    List<ModifyReservationCommand.CourseItem> courses = request.courses() == null ? null :
+        request.courses().stream()
+            .map(c -> new ModifyReservationCommand.CourseItem(c.courseId(), c.quantity()))
+            .toList();
     ReservationResponse response = ReservationResponse.from(
-        commandService.modify(ModifyReservationCommand.of(reservationId, userId, userRole, request))
+        commandService.modify(new ModifyReservationCommand(
+            reservationId, userId, userRole,
+            request.reservedDate(), request.guestCount(), courses
+        ))
     );
     return ApiResponse.ok(response);
   }

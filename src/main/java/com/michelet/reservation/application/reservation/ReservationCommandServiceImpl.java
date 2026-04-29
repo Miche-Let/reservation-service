@@ -44,7 +44,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
     @Override
     public ReservationResult create(CreateReservationCommand command) {
-        checkDuplicate(command.userId(), command.timeSlotId());
+        checkDuplicate(command.userId(), command.timeSlotId(), command.reservedDate());
 
         TimeSlotResponse timeSlot = timeSlotClient.getTimeSlot(command.timeSlotId()).data();
         LocalDateTime noshowDeadline = LocalDateTime.of(command.reservedDate(), timeSlot.startTime())
@@ -60,9 +60,9 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         );
         Reservation saved = reservationRepository.save(reservation);
 
-        timeSlotClient.decrementStock(saved.getTimeSlotId(), saved.getReservedDate());
-
+        // DB 저장 완료 후 외부 호출 (DB 롤백 시 Feign 미호출 보장)
         List<ReservationCourse> savedCourses = saveCourses(saved.getId(), command.courses());
+        timeSlotClient.decrementStock(saved.getTimeSlotId(), saved.getReservedDate());
 
         eventProducer.publishReservationCreated(new ReservationCreatedEvent(
                 saved.getId(), saved.getUserId(), saved.getRestaurantId(),
@@ -77,23 +77,23 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     public ReservationResult modify(ModifyReservationCommand command) {
         Reservation reservation = findAndVerifyOwnership(command.reservationId(), command.userId(), command.userRole());
 
-        LocalDate newDate = command.reservedDate() != null ? command.reservedDate() : reservation.getReservedDate();
+        LocalDate originalDate = reservation.getReservedDate();
+        LocalDate newDate = command.reservedDate() != null ? command.reservedDate() : originalDate;
         Integer newGuestCount =
                 command.guestCount() != null ? command.guestCount() : reservation.getGuestCount().value();
 
-        LocalDateTime newNoshowDeadline = resolveNoshowDeadline(
-                reservation, command.reservedDate(), newDate
-        );
+        LocalDateTime newNoshowDeadline = resolveNoshowDeadline(reservation, command.reservedDate(), newDate);
 
-        if (command.reservedDate() != null && !command.reservedDate().equals(reservation.getReservedDate())) {
-            timeSlotClient.incrementStock(reservation.getTimeSlotId(), reservation.getReservedDate());
-            timeSlotClient.decrementStock(reservation.getTimeSlotId(), command.reservedDate());
-        }
-
+        // DB 저장 먼저 확정 (롤백 시 외부 호출 방지)
         reservation.modify(newDate, GuestCount.of(newGuestCount), newNoshowDeadline);
         Reservation saved = reservationRepository.save(reservation);
-
         List<ReservationCourse> courses = updateCourses(saved.getId(), command.courses());
+
+        // 날짜 변경 시 재고 조정 — DB 커밋 이후 순서 보장
+        if (command.reservedDate() != null && !command.reservedDate().equals(originalDate)) {
+            timeSlotClient.incrementStock(saved.getTimeSlotId(), originalDate);
+            timeSlotClient.decrementStock(saved.getTimeSlotId(), command.reservedDate());
+        }
 
         return toResult(saved, courses);
     }
@@ -129,9 +129,9 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     }
 
 
-    private void checkDuplicate(UUID userId, UUID timeSlotId) {
-        if (reservationRepository.existsByUserIdAndTimeSlotIdAndStatusNot(
-                userId, timeSlotId, ReservationStatus.CANCELLED)) {
+    private void checkDuplicate(UUID userId, UUID timeSlotId, LocalDate reservedDate) {
+        if (reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(
+                userId, timeSlotId, reservedDate, ReservationStatus.CANCELLED)) {
             throw new BusinessException(ReservationErrorCode.DUPLICATE_RESERVATION);
         }
     }
@@ -139,11 +139,11 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     private Reservation findAndVerifyOwnership(UUID reservationId, UUID userId, String userRole) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
-        if (isPrivileged(userRole)) {
-            // TODO: OWNER 역할일 경우 restaurant-service RestaurantClient(Feign) 구현 후 식당 소유권 검증 추가
-            // ⚠️ OWNER 식당 소유권 미검증 — RestaurantClient Feign 보류 중
+        if ("MASTER".equalsIgnoreCase(userRole)) {
             return reservation;
         }
+        // TODO: OWNER 역할 — restaurant-service RestaurantClient(Feign) 구현 후 소유 식당 예약만 허용
+        // 현재 Feign 미구현 → fail-closed: OWNER도 userId 기반 검증 적용 (USER 동일 수준)
         if (!reservation.getUserId().equals(userId)) {
             throw new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND);
         }
@@ -172,7 +172,9 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     }
 
     /**
-     * courses == null  → 기존 코스 유지 (DB 재조회) courses == []    → 전체 삭제 courses != []    → 전체 교체 (삭제 후 새로 저장)
+     * courses == null  → 기존 코스 유지 (DB 재조회)
+     * courses == []    → 전체 삭제
+     * courses != []    → 전체 교체 (삭제 후 새로 저장)
      */
     private List<ReservationCourse> updateCourses(UUID reservationId, List<ModifyReservationCommand.CourseItem> items) {
         if (items == null) {
@@ -195,9 +197,5 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                 .map(ReservationCourseResult::from)
                 .toList();
         return ReservationResult.of(reservation, courseResults);
-    }
-
-    private boolean isPrivileged(String userRole) {
-        return "OWNER".equalsIgnoreCase(userRole) || "MASTER".equalsIgnoreCase(userRole);
     }
 }

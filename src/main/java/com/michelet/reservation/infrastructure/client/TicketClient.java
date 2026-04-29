@@ -12,5 +12,5 @@ import java.util.UUID;
 public interface TicketClient {
 
   @GetMapping("/internal/courses/{courseId}/price")
-  ApiResponse<TicketClientResponse> getCoursePrice(@PathVariable UUID courseId);
+  ApiResponse<TicketClientResponse> getCoursePrice(@PathVariable("courseId") UUID courseId);
 }
