@@ -147,6 +147,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         return reservation;
     }
 
+    // noshowDeadline = slotStartTime + 30분 이므로, 역산: slotStartTime = noshowDeadline - 30분
     private LocalDateTime resolveNoshowDeadline(Reservation existing, LocalDate requestedDate,
                                                 LocalTime requestedSlotStartTime, LocalDate effectiveDate) {
         if (requestedDate == null && requestedSlotStartTime == null) {
