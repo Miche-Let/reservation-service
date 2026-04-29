@@ -2,7 +2,8 @@ package com.michelet.reservation.infrastructure.client.dto;
 
 import java.util.UUID;
 
-public record RestaurantOwnerResponse(
+public record WaitingTokenVerifyResponse(
+    UUID userId,
     UUID restaurantId,
-    UUID ownerId
+    boolean valid
 ) {}

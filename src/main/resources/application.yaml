@@ -39,8 +39,8 @@ spring:
 feign:
   timeslot-service:
     url: ${FEIGN_TIMESLOT_SERVICE_URL:http://localhost:19400}
-  ticket-service:
-    url: ${FEIGN_TICKET_SERVICE_URL:http://localhost:19900}
+  waiting-service:
+    url: ${FEIGN_WAITING_SERVICE_URL:http://localhost:19300}
 
 server:
   port: 19500
