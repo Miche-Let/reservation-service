@@ -90,7 +90,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
             if (!newTimeSlotId.equals(originalTimeSlotId) && command.slotStartTime() == null) {
                 throw new BusinessException(ReservationErrorCode.SLOT_START_TIME_REQUIRED);
             }
-            checkDuplicate(command.userId(), newTimeSlotId, newDate);
+            checkDuplicate(reservation.getUserId(), newTimeSlotId, newDate);
         }
 
         reservation.modify(newTimeSlotId, newDate, GuestCount.of(newGuestCount), newNoshowDeadline);
