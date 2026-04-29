@@ -70,11 +70,8 @@ public class ReservationQueryServiceImpl implements ReservationQueryService {
         if ("MASTER".equalsIgnoreCase(userRole)) {
             return;
         }
-        if ("OWNER".equalsIgnoreCase(userRole)) {
-            // TODO: restaurant-service RestaurantClient(Feign) 구현 후 이어서 진행
-            return; // ⚠️ OWNER 식당 소유권 미검증 — RestaurantClient Feign 보류 중
-        }
-        // USER: 본인 예약만 조회 가능
+        // TODO: OWNER 역할 — restaurant-service RestaurantClient(Feign) 구현 후 소유 식당 예약만 허용
+        // 현재 Feign 미구현 → fail-closed: OWNER도 userId 기반 검증 적용 (USER 동일 수준)
         if (!reservation.getUserId().equals(userId)) {
             throw new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND);
         }

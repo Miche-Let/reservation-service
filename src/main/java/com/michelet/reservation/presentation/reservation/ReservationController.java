@@ -1,19 +1,25 @@
 package com.michelet.reservation.presentation.reservation;
 
 import com.michelet.common.response.ApiResponse;
+import com.michelet.reservation.application.reservation.ReservationCommandService;
 import com.michelet.reservation.application.reservation.ReservationQueryService;
+import com.michelet.reservation.application.reservation.command.CancelReservationCommand;
+import com.michelet.reservation.application.reservation.command.CreateReservationCommand;
+import com.michelet.reservation.application.reservation.command.ModifyReservationCommand;
 import com.michelet.reservation.domain.enums.ReservationStatus;
 import com.michelet.reservation.presentation.reservation.dto.request.CreateReservationRequest;
 import com.michelet.reservation.presentation.reservation.dto.request.ModifyReservationRequest;
 import com.michelet.reservation.presentation.reservation.dto.response.ReservationResponse;
 import com.michelet.reservation.presentation.reservation.dto.response.ReservationSummaryResponse;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,7 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ReservationController {
 
-//  private final ReservationCommandService commandService;
+  private final ReservationCommandService commandService;
   private final ReservationQueryService queryService;
 
   /* 권한: USER */
@@ -41,8 +47,16 @@ public class ReservationController {
       @RequestHeader("X-User-Role") String userRole,
       @RequestBody @Valid CreateReservationRequest request
   ) {
-    // TODO: return ApiResponse.ok(commandService.create(userId, request));
-    throw new UnsupportedOperationException("구현 예정");
+    List<CreateReservationCommand.CourseItem> courses = request.courses().stream()
+        .map(c -> new CreateReservationCommand.CourseItem(c.courseId(), c.quantity()))
+        .toList();
+    ReservationResponse response = ReservationResponse.from(
+        commandService.create(new CreateReservationCommand(
+            userId, request.restaurantId(), request.timeSlotId(),
+            request.reservedDate(), request.guestCount(), courses
+        ))
+    );
+    return ApiResponse.ok(response);
   }
 
   /* 권한: USER */
@@ -78,7 +92,27 @@ public class ReservationController {
       @PathVariable UUID reservationId,
       @RequestBody @Valid ModifyReservationRequest request
   ) {
-    // TODO: return ApiResponse.ok(commandService.modify(userId, userRole, reservationId, request));
-    throw new UnsupportedOperationException("구현 예정");
+    List<ModifyReservationCommand.CourseItem> courses = request.courses() == null ? null :
+        request.courses().stream()
+            .map(c -> new ModifyReservationCommand.CourseItem(c.courseId(), c.quantity()))
+            .toList();
+    ReservationResponse response = ReservationResponse.from(
+        commandService.modify(new ModifyReservationCommand(
+            reservationId, userId, userRole,
+            request.reservedDate(), request.guestCount(), courses
+        ))
+    );
+    return ApiResponse.ok(response);
+  }
+
+  /* 권한: USER — 조건: CONFIRMED + cancel_deadline 이내 */
+  @DeleteMapping("/{reservationId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void cancel(
+      @RequestHeader("X-User-Id") UUID userId,
+      @RequestHeader("X-User-Role") String userRole,
+      @PathVariable UUID reservationId
+  ) {
+    commandService.cancel(CancelReservationCommand.of(reservationId, userId, userRole));
   }
 }

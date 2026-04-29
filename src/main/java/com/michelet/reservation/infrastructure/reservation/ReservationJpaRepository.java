@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -70,9 +71,9 @@ public class ReservationJpaRepository implements ReservationRepository {
   }
 
   @Override
-  public boolean existsByUserIdAndTimeSlotIdAndStatusNot(
-      UUID userId, UUID timeSlotId, ReservationStatus status
+  public boolean existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(
+      UUID userId, UUID timeSlotId, LocalDate reservedDate, ReservationStatus status
   ) {
-    return jpaStore.existsByUserIdAndTimeSlotIdAndStatusNot(userId, timeSlotId, status);
+    return jpaStore.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(userId, timeSlotId, reservedDate, status);
   }
 }
