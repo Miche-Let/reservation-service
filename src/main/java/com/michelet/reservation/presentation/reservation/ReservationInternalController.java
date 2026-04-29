@@ -23,36 +23,36 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ReservationInternalController {
 
-  private final ReservationCommandService commandService;
-  private final ReservationQueryService queryService;
+    private final ReservationCommandService commandService;
+    private final ReservationQueryService queryService;
 
-  @GetMapping("/validity")
-  public ApiResponse<ReservationValidityResponse> checkValidity(
-      @RequestParam UUID userId,
-      @RequestParam UUID restaurantId
-  ) {
-    return ApiResponse.ok(ReservationValidityResponse.from(
-        queryService.checkValidity(userId, restaurantId)
-    ));
-  }
+    @GetMapping("/verify")
+    public ApiResponse<ReservationValidityResponse> checkValidity(
+            @RequestParam UUID userId,
+            @RequestParam UUID restaurantId
+    ) {
+        return ApiResponse.ok(ReservationValidityResponse.from(
+                queryService.checkValidity(userId, restaurantId)
+        ));
+    }
 
-  @PatchMapping("/check-in")
-  public ApiResponse<ReservationStatusResponse> checkIn(
-      @RequestBody @Valid CheckInRequest request
-  ) {
-    return ApiResponse.ok(ReservationStatusResponse.from(
-        commandService.checkIn(CheckInCommand.from(request))
-    ));
-  }
+    @PatchMapping("/check-in")
+    public ApiResponse<ReservationStatusResponse> checkIn(
+            @RequestBody @Valid CheckInRequest request
+    ) {
+        return ApiResponse.ok(ReservationStatusResponse.from(
+                commandService.checkIn(CheckInCommand.from(request))
+        ));
+    }
 
-  @GetMapping("/exists")
-  public ApiResponse<ReservationExistsResponse> checkExists(
-      @RequestParam UUID reservationId,
-      @RequestParam UUID userId,
-      @RequestParam UUID restaurantId
-  ) {
-    return ApiResponse.ok(ReservationExistsResponse.from(
-        queryService.checkExists(reservationId, userId, restaurantId)
-    ));
-  }
+    @GetMapping("/exists")
+    public ApiResponse<ReservationExistsResponse> checkExists(
+            @RequestParam UUID reservationId,
+            @RequestParam UUID userId,
+            @RequestParam UUID restaurantId
+    ) {
+        return ApiResponse.ok(ReservationExistsResponse.from(
+                queryService.checkExists(reservationId, userId, restaurantId)
+        ));
+    }
 }

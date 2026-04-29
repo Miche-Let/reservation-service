@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,14 +22,18 @@ public record CreateReservationRequest(
     @NotNull(message = "예약일은 필수입니다.")
     LocalDate reservedDate,
 
+    @NotNull(message = "슬롯 시작 시각은 필수입니다.")
+    LocalTime slotStartTime,
+
     @Min(value = 1, message = "인원수는 1명 이상이어야 합니다.")
     int guestCount,
 
     @NotEmpty(message = "코스를 1개 이상 선택해야 합니다.")
-    List<@NotNull @Valid CourseItem> courses  // null 요소 방지
+    List<@NotNull @Valid CourseItem> courses
 ) {
   public record CourseItem(
       @NotNull UUID courseId,
-      @Positive int quantity
+      @Positive int quantity,
+      @Positive int unitPrice
   ) {}
 }

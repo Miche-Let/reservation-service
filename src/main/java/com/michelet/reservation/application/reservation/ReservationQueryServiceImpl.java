@@ -76,5 +76,4 @@ public class ReservationQueryServiceImpl implements ReservationQueryService {
             throw new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND);
         }
     }
-
 }

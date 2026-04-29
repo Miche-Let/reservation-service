@@ -48,12 +48,12 @@ public class ReservationController {
       @RequestBody @Valid CreateReservationRequest request
   ) {
     List<CreateReservationCommand.CourseItem> courses = request.courses().stream()
-        .map(c -> new CreateReservationCommand.CourseItem(c.courseId(), c.quantity()))
+        .map(c -> new CreateReservationCommand.CourseItem(c.courseId(), c.quantity(), c.unitPrice()))
         .toList();
     ReservationResponse response = ReservationResponse.from(
         commandService.create(new CreateReservationCommand(
             userId, request.restaurantId(), request.timeSlotId(),
-            request.reservedDate(), request.guestCount(), courses
+            request.reservedDate(), request.slotStartTime(), request.guestCount(), courses
         ))
     );
     return ApiResponse.ok(response);
@@ -94,7 +94,7 @@ public class ReservationController {
   ) {
     List<ModifyReservationCommand.CourseItem> courses = request.courses() == null ? null :
         request.courses().stream()
-            .map(c -> new ModifyReservationCommand.CourseItem(c.courseId(), c.quantity()))
+            .map(c -> new ModifyReservationCommand.CourseItem(c.courseId(), c.quantity(), c.unitPrice()))
             .toList();
     ReservationResponse response = ReservationResponse.from(
         commandService.modify(new ModifyReservationCommand(
