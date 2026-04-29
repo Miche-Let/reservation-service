@@ -16,15 +16,11 @@ import com.michelet.reservation.domain.repository.ReservationCourseRepository;
 import com.michelet.reservation.domain.repository.ReservationRepository;
 import com.michelet.reservation.domain.vo.GuestCount;
 import com.michelet.reservation.domain.vo.Money;
-import com.michelet.reservation.infrastructure.client.TicketClient;
-import com.michelet.reservation.infrastructure.client.TimeSlotClient;
-import com.michelet.reservation.infrastructure.client.dto.TicketClientResponse;
-import com.michelet.reservation.infrastructure.client.dto.TimeSlotResponse;
-import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationCancelledEvent;
-import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationCreatedEvent;
-import com.michelet.reservation.infrastructure.kafka.producer.ReservationEventProducer;
+import com.michelet.reservation.application.port.TimeSlotPort;
+import com.michelet.reservation.application.port.WaitingPort;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -38,17 +34,24 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
     private final ReservationRepository reservationRepository;
     private final ReservationCourseRepository reservationCourseRepository;
-    private final TimeSlotClient timeSlotClient;
-    private final TicketClient ticketClient;
-    private final ReservationEventProducer eventProducer;
+    private final TimeSlotPort timeSlotPort;
+    private final WaitingPort waitingPort;
 
     @Override
     public ReservationResult create(CreateReservationCommand command) {
+        // TODO: 1차 — 대기열 토큰 서명 검증 (로컬, 추후 구현)
+        // 2차 — 대기열 서비스에 토큰 유효성 확인 (userId·restaurantId 바인딩까지 검증)
+        var tokenResult = waitingPort.verifyToken(command.waitingToken());
+        if (!tokenResult.valid()
+                || !command.userId().equals(tokenResult.userId())
+                || !command.restaurantId().equals(tokenResult.restaurantId())) {
+            throw new BusinessException(ReservationErrorCode.INVALID_WAITING_TOKEN);
+        }
+
         checkDuplicate(command.userId(), command.timeSlotId(), command.reservedDate());
 
-        TimeSlotResponse timeSlot = timeSlotClient.getTimeSlot(command.timeSlotId()).data();
-        LocalDateTime noshowDeadline = LocalDateTime.of(command.reservedDate(), timeSlot.startTime())
-                .minusMinutes(30);
+        LocalDateTime noshowDeadline = LocalDateTime.of(command.reservedDate(), command.slotStartTime())
+                .plusMinutes(30);
 
         Reservation reservation = Reservation.create(
                 command.userId(),
@@ -59,16 +62,10 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                 noshowDeadline
         );
         Reservation saved = reservationRepository.save(reservation);
-
-        // DB 저장 완료 후 외부 호출 (DB 롤백 시 Feign 미호출 보장)
         List<ReservationCourse> savedCourses = saveCourses(saved.getId(), command.courses());
-        timeSlotClient.decrementStock(saved.getTimeSlotId(), saved.getReservedDate());
 
-        eventProducer.publishReservationCreated(new ReservationCreatedEvent(
-                saved.getId(), saved.getUserId(), saved.getRestaurantId(),
-                saved.getTimeSlotId(), saved.getReservedDate(),
-                saved.getGuestCount().value(), LocalDateTime.now()
-        ));
+        // DB 저장 완료 후 외부 호출 — 롤백 시 Feign 미호출 보장 (단, 커밋 전 호출이므로 분산 트랜잭션 리스크 존재)
+        timeSlotPort.decrementStock(saved.getTimeSlotId(), saved.getReservedDate());
 
         return toResult(saved, savedCourses);
     }
@@ -84,15 +81,13 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         LocalDateTime newNoshowDeadline = resolveNoshowDeadline(reservation, command.reservedDate(), newDate);
 
-        // DB 저장 먼저 확정 (롤백 시 외부 호출 방지)
         reservation.modify(newDate, GuestCount.of(newGuestCount), newNoshowDeadline);
         Reservation saved = reservationRepository.save(reservation);
         List<ReservationCourse> courses = updateCourses(saved.getId(), command.courses());
 
-        // 날짜 변경 시 재고 조정 — DB 커밋 이후 순서 보장
         if (command.reservedDate() != null && !command.reservedDate().equals(originalDate)) {
-            timeSlotClient.incrementStock(saved.getTimeSlotId(), originalDate);
-            timeSlotClient.decrementStock(saved.getTimeSlotId(), command.reservedDate());
+            timeSlotPort.incrementStock(saved.getTimeSlotId(), originalDate);
+            timeSlotPort.decrementStock(saved.getTimeSlotId(), command.reservedDate());
         }
 
         return toResult(saved, courses);
@@ -105,12 +100,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         reservation.cancel();
         reservationRepository.save(reservation);
 
-        timeSlotClient.incrementStock(reservation.getTimeSlotId(), reservation.getReservedDate());
-
-        eventProducer.publishReservationCancelled(new ReservationCancelledEvent(
-                reservation.getId(), reservation.getUserId(), reservation.getRestaurantId(),
-                reservation.getTimeSlotId(), reservation.getReservedDate(), LocalDateTime.now()
-        ));
+        timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getReservedDate());
     }
 
     @Override
@@ -127,7 +117,6 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         return ReservationStatusResult.from(saved);
     }
-
 
     private void checkDuplicate(UUID userId, UUID timeSlotId, LocalDate reservedDate) {
         if (reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(
@@ -150,31 +139,30 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         return reservation;
     }
 
+    // noshowDeadline = slotStartTime + 30분 이므로, 역산: slotStartTime = noshowDeadline - 30분
     private LocalDateTime resolveNoshowDeadline(Reservation existing, LocalDate requestedDate,
                                                 LocalDate effectiveDate) {
         if (requestedDate == null) {
             return existing.getNoshowDeadline();
         }
-        TimeSlotResponse timeSlot = timeSlotClient.getTimeSlot(existing.getTimeSlotId()).data();
-        return LocalDateTime.of(effectiveDate, timeSlot.startTime()).minusMinutes(30);
+        LocalTime slotStartTime = existing.getNoshowDeadline().toLocalTime().minusMinutes(30);
+        return LocalDateTime.of(effectiveDate, slotStartTime).plusMinutes(30);
     }
 
     private List<ReservationCourse> saveCourses(UUID reservationId, List<CreateReservationCommand.CourseItem> items) {
         return items.stream()
-                .map(item -> {
-                    TicketClientResponse ticket = ticketClient.getCoursePrice(item.courseId()).data();
-                    ReservationCourse course = ReservationCourse.create(
-                            reservationId, item.courseId(), item.quantity(), Money.of(ticket.unitPrice())
-                    );
-                    return reservationCourseRepository.save(course);
-                })
+                .map(item -> reservationCourseRepository.save(
+                        ReservationCourse.create(reservationId, item.courseId(), item.quantity(),
+                                Money.of(item.unitPrice()))
+                ))
                 .toList();
     }
 
     /**
-     * courses == null  → 기존 코스 유지 (DB 재조회)
-     * courses == []    → 전체 삭제
-     * courses != []    → 전체 교체 (삭제 후 새로 저장)
+     * 코스 목록 수정 규칙:
+     * - courses == null : 기존 코스 유지 (DB 재조회)
+     * - courses == [] : 전체 삭제
+     * - courses != [] : 전체 교체 (삭제 후 새로 저장)
      */
     private List<ReservationCourse> updateCourses(UUID reservationId, List<ModifyReservationCommand.CourseItem> items) {
         if (items == null) {
@@ -182,13 +170,10 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         }
         reservationCourseRepository.deleteAllByReservationId(reservationId);
         return items.stream()
-                .map(item -> {
-                    TicketClientResponse ticket = ticketClient.getCoursePrice(item.courseId()).data();
-                    ReservationCourse course = ReservationCourse.create(
-                            reservationId, item.courseId(), item.quantity(), Money.of(ticket.unitPrice())
-                    );
-                    return reservationCourseRepository.save(course);
-                })
+                .map(item -> reservationCourseRepository.save(
+                        ReservationCourse.create(reservationId, item.courseId(), item.quantity(),
+                                Money.of(item.unitPrice()))
+                ))
                 .toList();
     }
 

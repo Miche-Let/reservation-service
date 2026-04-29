@@ -53,17 +53,19 @@ public class ReservationQueryServiceImpl implements ReservationQueryService {
 
     @Override
     public ReservationValidityResult checkValidity(UUID userId, UUID restaurantId) {
-        return reservationRepository.findConfirmedByUserIdAndRestaurantId(userId, restaurantId)
-                .map(ReservationValidityResult::of)
-                .orElseGet(ReservationValidityResult::notFound);
+        boolean exists = reservationRepository.existsByUserIdAndRestaurantIdAndStatusIn(
+                userId, restaurantId, List.of(ReservationStatus.CONFIRMED, ReservationStatus.COMPLETED));
+        return exists ? ReservationValidityResult.found() : ReservationValidityResult.notFound();
     }
 
     @Override
     public ReservationExistsResult checkExists(UUID reservationId, UUID userId, UUID restaurantId) {
-        return reservationRepository.findById(reservationId)
-                .filter(r -> r.getUserId().equals(userId) && r.getRestaurantId().equals(restaurantId))
-                .map(ReservationExistsResult::of)
-                .orElseGet(ReservationExistsResult::notFound);
+        boolean exists = reservationRepository.findById(reservationId)
+                .filter(r -> r.getUserId().equals(userId)
+                        && r.getRestaurantId().equals(restaurantId)
+                        && r.getStatus() == ReservationStatus.CONFIRMED)
+                .isPresent();
+        return exists ? ReservationExistsResult.found() : ReservationExistsResult.notFound();
     }
 
     private void verifyAccess(Reservation reservation, UUID userId, String userRole) {
@@ -76,5 +78,4 @@ public class ReservationQueryServiceImpl implements ReservationQueryService {
             throw new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND);
         }
     }
-
 }

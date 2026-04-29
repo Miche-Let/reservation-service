@@ -12,5 +12,5 @@ public record ModifyReservationCommand(
     Integer guestCount,       // null = 변경 없음
     List<CourseItem> courses  // null = 변경 없음 / [] = 전체 삭제
 ) {
-  public record CourseItem(UUID courseId, int quantity) {}
+  public record CourseItem(UUID courseId, int quantity, int unitPrice) {}
 }

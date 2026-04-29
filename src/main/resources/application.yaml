@@ -23,8 +23,8 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 
-#  kafka:
-#    bootstrap-servers: ${KAFKA_HOST:localhost}:${KAFKA_PORT:9092}
+  #  kafka:
+  #    bootstrap-servers: ${KAFKA_HOST:localhost}:${KAFKA_PORT:9092}
 
   cloud:
     config:
@@ -36,11 +36,14 @@ spring:
 #    service-url:
 #      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:19090}/eureka/
 
+internal:
+  secret: ${INTERNAL_SECRET:dev-secret}
+
 feign:
   timeslot-service:
     url: ${FEIGN_TIMESLOT_SERVICE_URL:http://localhost:19400}
-  ticket-service:
-    url: ${FEIGN_TICKET_SERVICE_URL:http://localhost:19900}
+  waiting-service:
+    url: ${FEIGN_WAITING_SERVICE_URL:http://localhost:19300}
 
 server:
   port: 19500

@@ -20,6 +20,7 @@ public record ModifyReservationRequest(
 ) {
   public record CourseItem(
       @NotNull UUID courseId,
-      @Positive int quantity
+      @Positive int quantity,
+      @Positive int unitPrice
   ) {}
 }

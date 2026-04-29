@@ -36,7 +36,9 @@ public enum ReservationErrorCode implements ErrorCode {
   INVALID_COURSE_ID               ("RESERVATION_203", "코스 ID는 필수입니다.", 400),
   INVALID_UNIT_PRICE              ("RESERVATION_204", "단가 정보는 필수입니다.", 400),
 
-  INVALID_COURSE_QUANTITY         ("RESERVATION_205", "코스 수량은 1개 이상이어야 합니다.", 400);
+  INVALID_COURSE_QUANTITY         ("RESERVATION_205", "코스 수량은 1개 이상이어야 합니다.", 400),
+
+  INVALID_WAITING_TOKEN           ("RESERVATION_301", "유효하지 않은 대기열 토큰입니다.", 403);
 
   private final String code;
   private final String message;
