@@ -100,7 +100,7 @@ public class ReservationController {
     ReservationResponse response = ReservationResponse.from(
         commandService.modify(new ModifyReservationCommand(
             reservationId, userId, userRole,
-            request.reservedDate(), request.guestCount(), courses
+            request.timeSlotId(), request.reservedDate(), request.slotStartTime(), request.guestCount(), courses
         ))
     );
     return ApiResponse.ok(response);

@@ -99,6 +99,7 @@ public class Reservation {
   }
 
   public void modify(
+      UUID newTimeSlotId,
       LocalDate newReservedDate,
       GuestCount newGuestCount,
       LocalDateTime newNoshowDeadline
@@ -107,6 +108,7 @@ public class Reservation {
     if (LocalDate.now().isAfter(modifyDeadline)) {
       throw new BusinessException(ReservationErrorCode.MODIFY_DEADLINE_EXCEEDED);
     }
+    this.timeSlotId     = newTimeSlotId;
     this.reservedDate   = newReservedDate;
     this.guestCount     = newGuestCount;
     this.cancelDeadline = newReservedDate.minusDays(2);
