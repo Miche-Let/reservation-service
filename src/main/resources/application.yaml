@@ -36,6 +36,9 @@ spring:
 #    service-url:
 #      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:19090}/eureka/
 
+internal:
+  secret: ${INTERNAL_SECRET:dev-secret}
+
 feign:
   timeslot-service:
     url: ${FEIGN_TIMESLOT_SERVICE_URL:http://localhost:19400}

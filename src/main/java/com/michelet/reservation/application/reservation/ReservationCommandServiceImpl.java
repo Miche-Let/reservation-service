@@ -40,19 +40,18 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     @Override
     public ReservationResult create(CreateReservationCommand command) {
         // TODO: 1차 — 대기열 토큰 서명 검증 (로컬, 추후 구현)
-        // 2차 — 대기열 서비스에 토큰 유효성 확인
+        // 2차 — 대기열 서비스에 토큰 유효성 확인 (userId·restaurantId 바인딩까지 검증)
         var tokenResult = waitingClient.verifyToken(command.waitingToken()).data();
-        if (!tokenResult.valid()) {
+        if (!tokenResult.valid()
+                || !command.userId().equals(tokenResult.userId())
+                || !command.restaurantId().equals(tokenResult.restaurantId())) {
             throw new BusinessException(ReservationErrorCode.INVALID_WAITING_TOKEN);
         }
 
         checkDuplicate(command.userId(), command.timeSlotId(), command.reservedDate());
 
-        // todo: timeSlotClient에서 슬롯 시작 시각 조회 (Kafka로 동기화) → 현재는 command에서 전달받는 slotStartTime 사용
         LocalDateTime noshowDeadline = LocalDateTime.of(command.reservedDate(), command.slotStartTime())
                 .plusMinutes(30);
-
-        timeSlotClient.decrementStock(command.timeSlotId(), command.reservedDate());
 
         Reservation reservation = Reservation.create(
                 command.userId(),
@@ -64,6 +63,9 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         );
         Reservation saved = reservationRepository.save(reservation);
         List<ReservationCourse> savedCourses = saveCourses(saved.getId(), command.courses());
+
+        // DB 저장 완료 후 외부 호출 — 롤백 시 Feign 미호출 보장 (단, 커밋 전 호출이므로 분산 트랜잭션 리스크 존재)
+        timeSlotClient.decrementStock(saved.getTimeSlotId(), saved.getReservedDate());
 
         return toResult(saved, savedCourses);
     }
