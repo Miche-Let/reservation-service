@@ -16,8 +16,8 @@ import com.michelet.reservation.domain.repository.ReservationCourseRepository;
 import com.michelet.reservation.domain.repository.ReservationRepository;
 import com.michelet.reservation.domain.vo.GuestCount;
 import com.michelet.reservation.domain.vo.Money;
-import com.michelet.reservation.infrastructure.client.TimeSlotClient;
-import com.michelet.reservation.infrastructure.client.WaitingClient;
+import com.michelet.reservation.application.port.TimeSlotPort;
+import com.michelet.reservation.application.port.WaitingPort;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -34,14 +34,14 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
     private final ReservationRepository reservationRepository;
     private final ReservationCourseRepository reservationCourseRepository;
-    private final TimeSlotClient timeSlotClient;
-    private final WaitingClient waitingClient;
+    private final TimeSlotPort timeSlotPort;
+    private final WaitingPort waitingPort;
 
     @Override
     public ReservationResult create(CreateReservationCommand command) {
         // TODO: 1차 — 대기열 토큰 서명 검증 (로컬, 추후 구현)
         // 2차 — 대기열 서비스에 토큰 유효성 확인 (userId·restaurantId 바인딩까지 검증)
-        var tokenResult = waitingClient.verifyToken(command.waitingToken()).data();
+        var tokenResult = waitingPort.verifyToken(command.waitingToken());
         if (!tokenResult.valid()
                 || !command.userId().equals(tokenResult.userId())
                 || !command.restaurantId().equals(tokenResult.restaurantId())) {
@@ -65,7 +65,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         List<ReservationCourse> savedCourses = saveCourses(saved.getId(), command.courses());
 
         // DB 저장 완료 후 외부 호출 — 롤백 시 Feign 미호출 보장 (단, 커밋 전 호출이므로 분산 트랜잭션 리스크 존재)
-        timeSlotClient.decrementStock(saved.getTimeSlotId(), saved.getReservedDate());
+        timeSlotPort.decrementStock(saved.getTimeSlotId(), saved.getReservedDate());
 
         return toResult(saved, savedCourses);
     }
@@ -86,8 +86,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         List<ReservationCourse> courses = updateCourses(saved.getId(), command.courses());
 
         if (command.reservedDate() != null && !command.reservedDate().equals(originalDate)) {
-            timeSlotClient.incrementStock(saved.getTimeSlotId(), originalDate);
-            timeSlotClient.decrementStock(saved.getTimeSlotId(), command.reservedDate());
+            timeSlotPort.incrementStock(saved.getTimeSlotId(), originalDate);
+            timeSlotPort.decrementStock(saved.getTimeSlotId(), command.reservedDate());
         }
 
         return toResult(saved, courses);
@@ -100,7 +100,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         reservation.cancel();
         reservationRepository.save(reservation);
 
-        timeSlotClient.incrementStock(reservation.getTimeSlotId(), reservation.getReservedDate());
+        timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getReservedDate());
     }
 
     @Override
