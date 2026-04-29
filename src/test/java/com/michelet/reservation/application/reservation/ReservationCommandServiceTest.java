@@ -272,6 +272,21 @@ class ReservationCommandServiceTest {
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.MODIFY_DEADLINE_EXCEEDED.getCode()));
         }
+
+        @Test
+        void 슬롯_변경_시_대상_슬롯에_중복_예약이_있으면_예외를_던진다() {
+            Reservation reservation = confirmedReservation();
+            when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+            UUID newSlotId = UUID.randomUUID();
+            when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(
+                    eq(userId), eq(newSlotId), eq(futureDate), any())).thenReturn(true);
+
+            assertThatThrownBy(() -> commandService.modify(new ModifyReservationCommand(
+                    reservationId, userId, "USER", newSlotId, null, null, null, null
+            ))).isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.DUPLICATE_RESERVATION.getCode()));
+        }
     }
 
     @Nested

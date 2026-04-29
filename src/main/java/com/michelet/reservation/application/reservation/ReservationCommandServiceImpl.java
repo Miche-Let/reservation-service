@@ -84,11 +84,15 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         LocalDateTime newNoshowDeadline = resolveNoshowDeadline(reservation, command.reservedDate(), command.slotStartTime(), newDate);
 
+        boolean slotChanged = !newTimeSlotId.equals(originalTimeSlotId) || !newDate.equals(originalDate);
+        if (slotChanged) {
+            checkDuplicate(command.userId(), newTimeSlotId, newDate);
+        }
+
         reservation.modify(newTimeSlotId, newDate, GuestCount.of(newGuestCount), newNoshowDeadline);
         Reservation saved = reservationRepository.save(reservation);
         List<ReservationCourse> courses = updateCourses(saved.getId(), command.courses());
 
-        boolean slotChanged = !newTimeSlotId.equals(originalTimeSlotId) || !newDate.equals(originalDate);
         if (slotChanged) {
             timeSlotPort.incrementStock(originalTimeSlotId, originalDate);
             timeSlotPort.decrementStock(newTimeSlotId, newDate);
