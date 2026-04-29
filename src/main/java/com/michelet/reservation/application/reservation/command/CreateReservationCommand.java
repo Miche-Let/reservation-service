@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public record CreateReservationCommand(
     UUID userId,
+    String waitingToken,
     UUID restaurantId,
     UUID timeSlotId,
     LocalDate reservedDate,

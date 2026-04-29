@@ -17,6 +17,7 @@ import com.michelet.reservation.domain.repository.ReservationRepository;
 import com.michelet.reservation.domain.vo.GuestCount;
 import com.michelet.reservation.domain.vo.Money;
 import com.michelet.reservation.infrastructure.client.TimeSlotClient;
+import com.michelet.reservation.infrastructure.client.WaitingClient;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -34,9 +35,17 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     private final ReservationRepository reservationRepository;
     private final ReservationCourseRepository reservationCourseRepository;
     private final TimeSlotClient timeSlotClient;
+    private final WaitingClient waitingClient;
 
     @Override
     public ReservationResult create(CreateReservationCommand command) {
+        // TODO: 1차 — 대기열 토큰 서명 검증 (로컬, 추후 구현)
+        // 2차 — 대기열 서비스에 토큰 유효성 확인
+        var tokenResult = waitingClient.verifyToken(command.waitingToken()).data();
+        if (!tokenResult.valid()) {
+            throw new BusinessException(ReservationErrorCode.INVALID_WAITING_TOKEN);
+        }
+
         checkDuplicate(command.userId(), command.timeSlotId(), command.reservedDate());
 
         LocalDateTime noshowDeadline = LocalDateTime.of(command.reservedDate(), command.slotStartTime())
