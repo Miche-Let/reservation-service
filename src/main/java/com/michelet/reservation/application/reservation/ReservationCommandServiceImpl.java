@@ -159,7 +159,10 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     }
 
     /**
-     * courses == null  → 기존 코스 유지 (DB 재조회) courses == []    → 전체 삭제 courses != []    → 전체 교체 (삭제 후 새로 저장)
+     * 코스 목록 수정 규칙:
+     * - courses == null : 기존 코스 유지 (DB 재조회)
+     * - courses == [] : 전체 삭제
+     * - courses != [] : 전체 교체 (삭제 후 새로 저장)
      */
     private List<ReservationCourse> updateCourses(UUID reservationId, List<ModifyReservationCommand.CourseItem> items) {
         if (items == null) {
