@@ -72,11 +72,13 @@ class ReservationCommandServiceTest {
     }
 
     Reservation confirmedDeadlinePassed() {
-        LocalDate nearDate = LocalDate.now().plusDays(1);
+        LocalDate today = LocalDate.now();
+        LocalDate nearDate = today.plusDays(1);
+        LocalDate passedDeadline = today.minusDays(1);
         return Reservation.reconstitute(
                 reservationId, userId, restaurantId, timeSlotId,
                 nearDate, GuestCount.of(2), ReservationStatus.CONFIRMED,
-                LocalDate.now().minusDays(1), LocalDate.now().minusDays(1),
+                passedDeadline, passedDeadline,
                 LocalDateTime.of(nearDate, slotStartTime).plusMinutes(30)
         );
     }
@@ -181,18 +183,34 @@ class ReservationCommandServiceTest {
         }
 
         @Test
-        void 타임슬롯_변경_시_기존_재고_복구_후_신규_재고_차감() {
+        void 타임슬롯과_날짜_동시_변경_시_slotStartTime_포함하면_재고_조정된다() {
+            Reservation reservation = confirmedReservation();
+            when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+            UUID newSlotId = UUID.randomUUID();
+            LocalDate newDate = futureDate.plusDays(3);
+            LocalTime newStartTime = LocalTime.of(20, 0);
+
+            commandService.modify(new ModifyReservationCommand(
+                    reservationId, userId, "USER",
+                    newSlotId, newDate, newStartTime, null, null
+            ));
+
+            verify(timeSlotPort).incrementStock(timeSlotId, futureDate);
+            verify(timeSlotPort).decrementStock(newSlotId, newDate);
+        }
+
+        @Test
+        void 타임슬롯_변경_시_slotStartTime_없으면_예외를_던진다() {
             Reservation reservation = confirmedReservation();
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
             UUID newSlotId = UUID.randomUUID();
 
-            commandService.modify(new ModifyReservationCommand(
+            assertThatThrownBy(() -> commandService.modify(new ModifyReservationCommand(
                     reservationId, userId, "USER",
                     newSlotId, null, null, null, null
-            ));
-
-            verify(timeSlotPort).incrementStock(timeSlotId, futureDate);
-            verify(timeSlotPort).decrementStock(newSlotId, futureDate);
+            ))).isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.SLOT_START_TIME_REQUIRED.getCode()));
         }
 
         @Test
@@ -282,7 +300,7 @@ class ReservationCommandServiceTest {
                     eq(userId), eq(newSlotId), eq(futureDate), any())).thenReturn(true);
 
             assertThatThrownBy(() -> commandService.modify(new ModifyReservationCommand(
-                    reservationId, userId, "USER", newSlotId, null, null, null, null
+                    reservationId, userId, "USER", newSlotId, null, LocalTime.of(20, 0), null, null
             ))).isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.DUPLICATE_RESERVATION.getCode()));

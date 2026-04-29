@@ -224,6 +224,23 @@ class ReservationControllerTest {
         }
 
         @Test
+        void timeSlotId와_slotStartTime을_포함한_수정_요청이_정상_처리된다() throws Exception {
+            when(commandService.modify(any())).thenReturn(reservationResult());
+
+            ModifyReservationRequest req = new ModifyReservationRequest(
+                    UUID.randomUUID(), futureDate.plusDays(3), LocalTime.of(20, 0), null, null
+            );
+
+            mockMvc.perform(patch("/api/v1/reservations/{id}", reservationId)
+                            .header("X-User-Id", userId)
+                            .header("X-User-Role", "USER")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(req)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.reservationId").value(reservationId.toString()));
+        }
+
+        @Test
         void 수정_기한_초과_시_400을_반환한다() throws Exception {
             when(commandService.modify(any()))
                     .thenThrow(new BusinessException(ReservationErrorCode.MODIFY_DEADLINE_EXCEEDED));
