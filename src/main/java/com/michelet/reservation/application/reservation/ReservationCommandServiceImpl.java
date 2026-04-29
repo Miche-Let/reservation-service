@@ -86,6 +86,10 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         boolean slotChanged = !newTimeSlotId.equals(originalTimeSlotId) || !newDate.equals(originalDate);
         if (slotChanged) {
+            // timeSlotId가 바뀌면 새 슬롯의 시작 시각이 달라질 수 있으므로 slotStartTime 필수
+            if (!newTimeSlotId.equals(originalTimeSlotId) && command.slotStartTime() == null) {
+                throw new BusinessException(ReservationErrorCode.SLOT_START_TIME_REQUIRED);
+            }
             checkDuplicate(command.userId(), newTimeSlotId, newDate);
         }
 
