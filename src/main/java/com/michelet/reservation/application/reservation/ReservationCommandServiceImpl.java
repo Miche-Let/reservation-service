@@ -48,8 +48,11 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         checkDuplicate(command.userId(), command.timeSlotId(), command.reservedDate());
 
+        // todo: timeSlotClient에서 슬롯 시작 시각 조회 (Kafka로 동기화) → 현재는 command에서 전달받는 slotStartTime 사용
         LocalDateTime noshowDeadline = LocalDateTime.of(command.reservedDate(), command.slotStartTime())
-                .minusMinutes(30);
+                .plusMinutes(30);
+
+        timeSlotClient.decrementStock(command.timeSlotId(), command.reservedDate());
 
         Reservation reservation = Reservation.create(
                 command.userId(),
@@ -61,8 +64,6 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         );
         Reservation saved = reservationRepository.save(reservation);
         List<ReservationCourse> savedCourses = saveCourses(saved.getId(), command.courses());
-
-        timeSlotClient.decrementStock(saved.getTimeSlotId(), saved.getReservedDate());
 
         return toResult(saved, savedCourses);
     }
@@ -136,28 +137,27 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         return reservation;
     }
 
-    // 날짜 변경 시 기존 noshowDeadline에서 슬롯 시작 시각을 역산 (getTimeSlot Feign 미사용)
+    // noshowDeadline = slotStartTime + 30분 이므로, 역산: slotStartTime = noshowDeadline - 30분
     private LocalDateTime resolveNoshowDeadline(Reservation existing, LocalDate requestedDate,
                                                 LocalDate effectiveDate) {
         if (requestedDate == null) {
             return existing.getNoshowDeadline();
         }
-        LocalTime slotStartTime = existing.getNoshowDeadline().toLocalTime().plusMinutes(30);
-        return LocalDateTime.of(effectiveDate, slotStartTime).minusMinutes(30);
+        LocalTime slotStartTime = existing.getNoshowDeadline().toLocalTime().minusMinutes(30);
+        return LocalDateTime.of(effectiveDate, slotStartTime).plusMinutes(30);
     }
 
     private List<ReservationCourse> saveCourses(UUID reservationId, List<CreateReservationCommand.CourseItem> items) {
         return items.stream()
                 .map(item -> reservationCourseRepository.save(
-                        ReservationCourse.create(reservationId, item.courseId(), item.quantity(), Money.of(item.unitPrice()))
+                        ReservationCourse.create(reservationId, item.courseId(), item.quantity(),
+                                Money.of(item.unitPrice()))
                 ))
                 .toList();
     }
 
     /**
-     * courses == null  → 기존 코스 유지 (DB 재조회)
-     * courses == []    → 전체 삭제
-     * courses != []    → 전체 교체 (삭제 후 새로 저장)
+     * courses == null  → 기존 코스 유지 (DB 재조회) courses == []    → 전체 삭제 courses != []    → 전체 교체 (삭제 후 새로 저장)
      */
     private List<ReservationCourse> updateCourses(UUID reservationId, List<ModifyReservationCommand.CourseItem> items) {
         if (items == null) {
@@ -166,7 +166,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         reservationCourseRepository.deleteAllByReservationId(reservationId);
         return items.stream()
                 .map(item -> reservationCourseRepository.save(
-                        ReservationCourse.create(reservationId, item.courseId(), item.quantity(), Money.of(item.unitPrice()))
+                        ReservationCourse.create(reservationId, item.courseId(), item.quantity(),
+                                Money.of(item.unitPrice()))
                 ))
                 .toList();
     }

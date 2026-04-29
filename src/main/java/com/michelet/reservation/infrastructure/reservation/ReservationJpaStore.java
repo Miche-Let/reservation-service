@@ -26,4 +26,6 @@ public interface ReservationJpaStore extends JpaRepository<ReservationJpaEntity,
       UUID userId, UUID restaurantId, ReservationStatus status);
 
   boolean existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(UUID userId, UUID timeSlotId, LocalDate reservedDate, ReservationStatus status);
+
+  boolean existsByUserIdAndRestaurantIdAndStatusIn(UUID userId, UUID restaurantId, List<ReservationStatus> statuses);
 }

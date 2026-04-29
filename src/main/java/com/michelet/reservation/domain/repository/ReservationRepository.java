@@ -27,4 +27,6 @@ public interface ReservationRepository {
   Optional<Reservation> findConfirmedByUserIdAndRestaurantId(UUID userId, UUID restaurantId);
 
   boolean existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(UUID userId, UUID timeSlotId, LocalDate reservedDate, ReservationStatus status);
+
+  boolean existsByUserIdAndRestaurantIdAndStatusIn(UUID userId, UUID restaurantId, List<ReservationStatus> statuses);
 }

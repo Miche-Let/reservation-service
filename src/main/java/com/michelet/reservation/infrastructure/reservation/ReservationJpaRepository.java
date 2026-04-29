@@ -76,4 +76,11 @@ public class ReservationJpaRepository implements ReservationRepository {
   ) {
     return jpaStore.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(userId, timeSlotId, reservedDate, status);
   }
+
+  @Override
+  public boolean existsByUserIdAndRestaurantIdAndStatusIn(
+      UUID userId, UUID restaurantId, List<ReservationStatus> statuses
+  ) {
+    return jpaStore.existsByUserIdAndRestaurantIdAndStatusIn(userId, restaurantId, statuses);
+  }
 }
