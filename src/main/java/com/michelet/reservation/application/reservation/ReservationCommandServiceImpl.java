@@ -65,7 +65,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         List<ReservationCourse> savedCourses = saveCourses(saved.getId(), command.courses());
 
         // DB 저장 완료 후 외부 호출 — 롤백 시 Feign 미호출 보장 (단, 커밋 전 호출이므로 분산 트랜잭션 리스크 존재)
-        timeSlotPort.decrementStock(saved.getTimeSlotId(), saved.getReservedDate());
+        timeSlotPort.decrementStock(saved.getTimeSlotId(), saved.getGuestCount().value());
 
         return toResult(saved, savedCourses);
     }
@@ -99,7 +99,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         if (slotChanged) {
             timeSlotPort.incrementStock(originalTimeSlotId, originalDate);
-            timeSlotPort.decrementStock(newTimeSlotId, newDate);
+            timeSlotPort.decrementStock(newTimeSlotId, newGuestCount);
         }
 
         return toResult(saved, courses);

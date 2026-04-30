@@ -3,6 +3,7 @@ package com.michelet.reservation.application.reservation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.lenient;
@@ -116,7 +117,7 @@ class ReservationCommandServiceTest {
 
             assertThat(result).isNotNull();
             verify(reservationRepository).save(any(Reservation.class));
-            verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(futureDate));
+            verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2));
         }
 
         @Test
@@ -179,7 +180,7 @@ class ReservationCommandServiceTest {
             ));
 
             verify(timeSlotPort).incrementStock(timeSlotId, futureDate);
-            verify(timeSlotPort).decrementStock(timeSlotId, newDate);
+            verify(timeSlotPort).decrementStock(timeSlotId, 2);
         }
 
         @Test
@@ -196,7 +197,7 @@ class ReservationCommandServiceTest {
             ));
 
             verify(timeSlotPort).incrementStock(timeSlotId, futureDate);
-            verify(timeSlotPort).decrementStock(newSlotId, newDate);
+            verify(timeSlotPort).decrementStock(newSlotId, 2);
         }
 
         @Test
@@ -224,7 +225,7 @@ class ReservationCommandServiceTest {
             ));
 
             verify(timeSlotPort, never()).incrementStock(any(), any());
-            verify(timeSlotPort, never()).decrementStock(any(), any());
+            verify(timeSlotPort, never()).decrementStock(any(), anyInt());
         }
 
         @Test
