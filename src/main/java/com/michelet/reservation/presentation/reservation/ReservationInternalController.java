@@ -2,6 +2,7 @@ package com.michelet.reservation.presentation.reservation;
 
 import com.michelet.common.response.ApiResponse;
 import com.michelet.reservation.application.reservation.ReservationCommandService;
+import com.michelet.reservation.domain.exception.ReservationSuccessCode;
 import com.michelet.reservation.application.reservation.ReservationQueryService;
 import com.michelet.reservation.application.reservation.command.CheckInCommand;
 import com.michelet.reservation.presentation.reservation.dto.request.CheckInRequest;
@@ -31,18 +32,16 @@ public class ReservationInternalController {
             @RequestParam UUID userId,
             @RequestParam UUID restaurantId
     ) {
-        return ApiResponse.ok(ReservationValidityResponse.from(
-                queryService.checkValidity(userId, restaurantId)
-        ));
+        return ApiResponse.ok(ReservationSuccessCode.RESERVATION_VALIDITY_CHECKED,
+                ReservationValidityResponse.from(queryService.checkValidity(userId, restaurantId)));
     }
 
     @PatchMapping("/check-in")
     public ApiResponse<ReservationStatusResponse> checkIn(
             @RequestBody @Valid CheckInRequest request
     ) {
-        return ApiResponse.ok(ReservationStatusResponse.from(
-                commandService.checkIn(CheckInCommand.from(request))
-        ));
+        return ApiResponse.ok(ReservationSuccessCode.RESERVATION_CHECKED_IN,
+                ReservationStatusResponse.from(commandService.checkIn(CheckInCommand.from(request))));
     }
 
     @GetMapping("/exists")
@@ -51,8 +50,7 @@ public class ReservationInternalController {
             @RequestParam UUID userId,
             @RequestParam UUID restaurantId
     ) {
-        return ApiResponse.ok(ReservationExistsResponse.from(
-                queryService.checkExists(reservationId, userId, restaurantId)
-        ));
+        return ApiResponse.ok(ReservationSuccessCode.RESERVATION_EXISTS_CHECKED,
+                ReservationExistsResponse.from(queryService.checkExists(reservationId, userId, restaurantId)));
     }
 }
