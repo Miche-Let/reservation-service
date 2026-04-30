@@ -18,7 +18,7 @@ public abstract class BaseJpaEntity extends BaseEntity   // common 라이브러�
   @Override
   public boolean isNew() { return isNew; }
 
-  protected void markNew() { this.isNew = true; }
+  public void markNew() { this.isNew = true; }
 
   @PostPersist
   @PostLoad

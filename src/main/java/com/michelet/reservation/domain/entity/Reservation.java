@@ -17,6 +17,7 @@ import java.util.UUID;
 public class Reservation {
 
   private UUID id;
+  private boolean isNew;
   private UUID userId;
   private UUID restaurantId;
   private UUID timeSlotId;
@@ -41,6 +42,7 @@ public class Reservation {
     validateCreateInput(userId, restaurantId, timeSlotId, reservedDate, guestCount);
     Reservation r = new Reservation();
     r.id             = UUID.randomUUID();
+    r.isNew          = true;
     r.userId         = userId;
     r.restaurantId   = restaurantId;
     r.timeSlotId     = timeSlotId;

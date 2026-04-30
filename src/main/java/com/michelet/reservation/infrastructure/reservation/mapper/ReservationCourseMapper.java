@@ -10,10 +10,14 @@ import lombok.NoArgsConstructor;
 public class ReservationCourseMapper {
 
   public static ReservationCourseJpaEntity toJpaEntity(ReservationCourse domain) {
-    return ReservationCourseJpaEntity.of(
+    ReservationCourseJpaEntity entity = ReservationCourseJpaEntity.of(
         domain.getId(), domain.getReservationId(), domain.getCourseId(),
         domain.getQuantity(), domain.getUnitPrice().value()
     );
+    if (domain.isNew()) {
+      entity.markNew();
+    }
+    return entity;
   }
 
   public static ReservationCourse toDomain(ReservationCourseJpaEntity entity) {

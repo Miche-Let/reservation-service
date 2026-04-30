@@ -10,12 +10,16 @@ import lombok.NoArgsConstructor;
 public class ReservationMapper {
 
   public static ReservationJpaEntity toJpaEntity(Reservation domain) {
-    return ReservationJpaEntity.of(
+    ReservationJpaEntity entity = ReservationJpaEntity.of(
         domain.getId(), domain.getUserId(), domain.getRestaurantId(),
         domain.getTimeSlotId(), domain.getReservedDate(),
         domain.getGuestCount().value(), domain.getStatus(),
         domain.getCancelDeadline(), domain.getModifyDeadline(), domain.getNoshowDeadline()
     );
+    if (domain.isNew()) {
+      entity.markNew();
+    }
+    return entity;
   }
 
   public static Reservation toDomain(ReservationJpaEntity entity) {
