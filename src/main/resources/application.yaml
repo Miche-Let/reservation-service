@@ -31,10 +31,10 @@ spring:
       enabled: false
     discovery:
       enabled: false
-eureka:
-  client:
-    service-url:
-      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:19090}/eureka/
+#eureka:
+#  client:
+#    service-url:
+#      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:19090}/eureka/
 
 internal:
   secret: ${INTERNAL_SECRET:dev-secret}

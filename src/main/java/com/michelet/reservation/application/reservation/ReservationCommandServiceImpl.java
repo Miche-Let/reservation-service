@@ -76,6 +76,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         UUID originalTimeSlotId = reservation.getTimeSlotId();
         LocalDate originalDate = reservation.getReservedDate();
+        int originalGuestCount = reservation.getGuestCount().value();
 
         UUID newTimeSlotId = command.timeSlotId() != null ? command.timeSlotId() : originalTimeSlotId;
         LocalDate newDate = command.reservedDate() != null ? command.reservedDate() : originalDate;
@@ -98,7 +99,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         List<ReservationCourse> courses = updateCourses(saved.getId(), command.courses());
 
         if (slotChanged) {
-            timeSlotPort.incrementStock(originalTimeSlotId, originalDate);
+            timeSlotPort.incrementStock(originalTimeSlotId, originalGuestCount);
             timeSlotPort.decrementStock(newTimeSlotId, newGuestCount);
         }
 
@@ -112,7 +113,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         reservation.cancel();
         reservationRepository.save(reservation);
 
-        timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getReservedDate());
+        timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
     }
 
     @Override

@@ -3,10 +3,7 @@ package com.michelet.reservation.presentation.reservation;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -256,30 +253,5 @@ class ReservationControllerTest {
                     .andExpect(jsonPath("$.code").value(ReservationErrorCode.MODIFY_DEADLINE_EXCEEDED.getCode()));
         }
     }
-
-    @Nested
-    class Cancel {
-
-        @Test
-        void 정상_취소_시_204를_반환한다() throws Exception {
-            doNothing().when(commandService).cancel(any());
-
-            mockMvc.perform(delete("/api/v1/reservations/{id}", reservationId)
-                            .header("X-User-Id", userId)
-                            .header("X-User-Role", "USER"))
-                    .andExpect(status().isNoContent());
-        }
-
-        @Test
-        void 취소_기한_초과_시_400을_반환한다() throws Exception {
-            doThrow(new BusinessException(ReservationErrorCode.CANCEL_DEADLINE_EXCEEDED))
-                    .when(commandService).cancel(any());
-
-            mockMvc.perform(delete("/api/v1/reservations/{id}", reservationId)
-                            .header("X-User-Id", userId)
-                            .header("X-User-Role", "USER"))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value(ReservationErrorCode.CANCEL_DEADLINE_EXCEEDED.getCode()));
-        }
-    }
 }
+

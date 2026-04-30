@@ -179,7 +179,7 @@ class ReservationCommandServiceTest {
                     null, newDate, null, null, null
             ));
 
-            verify(timeSlotPort).incrementStock(timeSlotId, futureDate);
+            verify(timeSlotPort).incrementStock(timeSlotId, 2);
             verify(timeSlotPort).decrementStock(timeSlotId, 2);
         }
 
@@ -196,7 +196,7 @@ class ReservationCommandServiceTest {
                     newSlotId, newDate, newStartTime, null, null
             ));
 
-            verify(timeSlotPort).incrementStock(timeSlotId, futureDate);
+            verify(timeSlotPort).incrementStock(timeSlotId, 2);
             verify(timeSlotPort).decrementStock(newSlotId, 2);
         }
 
@@ -224,7 +224,7 @@ class ReservationCommandServiceTest {
                     null, null, null, 4, null
             ));
 
-            verify(timeSlotPort, never()).incrementStock(any(), any());
+            verify(timeSlotPort, never()).incrementStock(any(), anyInt());
             verify(timeSlotPort, never()).decrementStock(any(), anyInt());
         }
 
@@ -319,7 +319,7 @@ class ReservationCommandServiceTest {
             commandService.cancel(CancelReservationCommand.of(reservationId, userId, "USER"));
 
             assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
-            verify(timeSlotPort).incrementStock(timeSlotId, futureDate);
+            verify(timeSlotPort).incrementStock(timeSlotId, 2);
         }
 
         @Test
