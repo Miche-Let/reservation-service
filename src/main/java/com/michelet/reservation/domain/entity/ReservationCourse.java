@@ -14,6 +14,7 @@ import java.util.UUID;
 public class ReservationCourse {
 
   private UUID id;
+  private boolean isNew;
   private UUID reservationId;
 
   private UUID courseId;
@@ -31,6 +32,7 @@ public class ReservationCourse {
     validateInput(reservationId, courseId, quantity, unitPrice);
     ReservationCourse c = new ReservationCourse();
     c.id            = UUID.randomUUID();
+    c.isNew         = true;
     c.reservationId = reservationId;
     c.courseId      = courseId;
     c.quantity      = quantity;

@@ -2,8 +2,8 @@ package com.michelet.reservation.presentation.reservation;
 
 import com.michelet.common.response.ApiResponse;
 import com.michelet.reservation.application.reservation.ReservationCommandService;
+import com.michelet.reservation.domain.exception.ReservationSuccessCode;
 import com.michelet.reservation.application.reservation.ReservationQueryService;
-import com.michelet.reservation.application.reservation.command.CancelReservationCommand;
 import com.michelet.reservation.application.reservation.command.CreateReservationCommand;
 import com.michelet.reservation.application.reservation.command.ModifyReservationCommand;
 import com.michelet.reservation.domain.enums.ReservationStatus;
@@ -19,7 +19,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -57,7 +56,7 @@ public class ReservationController {
             request.reservedDate(), request.slotStartTime(), request.guestCount(), courses
         ))
     );
-    return ApiResponse.ok(response);
+    return ApiResponse.ok(ReservationSuccessCode.RESERVATION_CREATED, response);
   }
 
   /* 권한: USER */
@@ -69,7 +68,7 @@ public class ReservationController {
   ) {
     Page<ReservationSummaryResponse> response = queryService.getList(userId, status, pageable)
         .map(ReservationSummaryResponse::from);
-    return ApiResponse.ok(response);
+    return ApiResponse.ok(ReservationSuccessCode.RESERVATION_FETCHED, response);
   }
 
   /* 권한: USER·OWNER·MASTER */
@@ -82,7 +81,7 @@ public class ReservationController {
     ReservationResponse response = ReservationResponse.from(
         queryService.getDetail(userId, userRole, reservationId)
     );
-    return ApiResponse.ok(response);
+    return ApiResponse.ok(ReservationSuccessCode.RESERVATION_FETCHED, response);
   }
 
   /* 권한: USER·OWNER·MASTER — 조건: CONFIRMED + modify_deadline 이내 */
@@ -100,20 +99,9 @@ public class ReservationController {
     ReservationResponse response = ReservationResponse.from(
         commandService.modify(new ModifyReservationCommand(
             reservationId, userId, userRole,
-            request.reservedDate(), request.guestCount(), courses
+            request.timeSlotId(), request.reservedDate(), request.slotStartTime(), request.guestCount(), courses
         ))
     );
-    return ApiResponse.ok(response);
-  }
-
-  /* 권한: USER — 조건: CONFIRMED + cancel_deadline 이내 */
-  @DeleteMapping("/{reservationId}")
-  @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void cancel(
-      @RequestHeader("X-User-Id") UUID userId,
-      @RequestHeader("X-User-Role") String userRole,
-      @PathVariable UUID reservationId
-  ) {
-    commandService.cancel(CancelReservationCommand.of(reservationId, userId, userRole));
+    return ApiResponse.ok(ReservationSuccessCode.RESERVATION_MODIFIED, response);
   }
 }

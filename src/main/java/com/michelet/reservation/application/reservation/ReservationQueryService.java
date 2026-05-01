@@ -1,5 +1,6 @@
 package com.michelet.reservation.application.reservation;
 
+import com.michelet.reservation.application.reservation.result.ReservationActiveResult;
 import com.michelet.reservation.application.reservation.result.ReservationExistsResult;
 import com.michelet.reservation.application.reservation.result.ReservationResult;
 import com.michelet.reservation.application.reservation.result.ReservationSummaryResult;
@@ -19,4 +20,6 @@ public interface ReservationQueryService {
   ReservationValidityResult checkValidity(UUID userId, UUID restaurantId);
 
   ReservationExistsResult checkExists(UUID reservationId, UUID userId, UUID restaurantId);
+
+  ReservationActiveResult hasActiveReservation(UUID userId);
 }

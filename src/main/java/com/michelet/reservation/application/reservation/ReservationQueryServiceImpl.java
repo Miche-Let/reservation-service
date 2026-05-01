@@ -1,6 +1,7 @@
 package com.michelet.reservation.application.reservation;
 
 import com.michelet.common.exception.BusinessException;
+import com.michelet.reservation.application.reservation.result.ReservationActiveResult;
 import com.michelet.reservation.application.reservation.result.ReservationCourseResult;
 import com.michelet.reservation.application.reservation.result.ReservationExistsResult;
 import com.michelet.reservation.application.reservation.result.ReservationResult;
@@ -66,6 +67,12 @@ public class ReservationQueryServiceImpl implements ReservationQueryService {
                         && r.getStatus() == ReservationStatus.CONFIRMED)
                 .isPresent();
         return exists ? ReservationExistsResult.found() : ReservationExistsResult.notFound();
+    }
+
+    @Override
+    public ReservationActiveResult hasActiveReservation(UUID userId) {
+        boolean exists = reservationRepository.existsByUserIdAndStatus(userId, ReservationStatus.CONFIRMED);
+        return exists ? ReservationActiveResult.found() : ReservationActiveResult.notFound();
     }
 
     private void verifyAccess(Reservation reservation, UUID userId, String userRole) {

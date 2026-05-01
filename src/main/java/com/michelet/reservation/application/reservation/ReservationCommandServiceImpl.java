@@ -65,7 +65,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         List<ReservationCourse> savedCourses = saveCourses(saved.getId(), command.courses());
 
         // DB 저장 완료 후 외부 호출 — 롤백 시 Feign 미호출 보장 (단, 커밋 전 호출이므로 분산 트랜잭션 리스크 존재)
-        timeSlotPort.decrementStock(saved.getTimeSlotId(), saved.getReservedDate());
+        timeSlotPort.decrementStock(saved.getTimeSlotId(), saved.getGuestCount().value());
 
         return toResult(saved, savedCourses);
     }
@@ -74,20 +74,33 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     public ReservationResult modify(ModifyReservationCommand command) {
         Reservation reservation = findAndVerifyOwnership(command.reservationId(), command.userId(), command.userRole());
 
+        UUID originalTimeSlotId = reservation.getTimeSlotId();
         LocalDate originalDate = reservation.getReservedDate();
+        int originalGuestCount = reservation.getGuestCount().value();
+
+        UUID newTimeSlotId = command.timeSlotId() != null ? command.timeSlotId() : originalTimeSlotId;
         LocalDate newDate = command.reservedDate() != null ? command.reservedDate() : originalDate;
         Integer newGuestCount =
                 command.guestCount() != null ? command.guestCount() : reservation.getGuestCount().value();
 
-        LocalDateTime newNoshowDeadline = resolveNoshowDeadline(reservation, command.reservedDate(), newDate);
+        LocalDateTime newNoshowDeadline = resolveNoshowDeadline(reservation, command.reservedDate(), command.slotStartTime(), newDate);
 
-        reservation.modify(newDate, GuestCount.of(newGuestCount), newNoshowDeadline);
+        boolean slotChanged = !newTimeSlotId.equals(originalTimeSlotId) || !newDate.equals(originalDate);
+        if (slotChanged) {
+            // timeSlotId가 바뀌면 새 슬롯의 시작 시각이 달라질 수 있으므로 slotStartTime 필수
+            if (!newTimeSlotId.equals(originalTimeSlotId) && command.slotStartTime() == null) {
+                throw new BusinessException(ReservationErrorCode.SLOT_START_TIME_REQUIRED);
+            }
+            checkDuplicate(reservation.getUserId(), newTimeSlotId, newDate);
+        }
+
+        reservation.modify(newTimeSlotId, newDate, GuestCount.of(newGuestCount), newNoshowDeadline);
         Reservation saved = reservationRepository.save(reservation);
         List<ReservationCourse> courses = updateCourses(saved.getId(), command.courses());
 
-        if (command.reservedDate() != null && !command.reservedDate().equals(originalDate)) {
-            timeSlotPort.incrementStock(saved.getTimeSlotId(), originalDate);
-            timeSlotPort.decrementStock(saved.getTimeSlotId(), command.reservedDate());
+        if (slotChanged) {
+            timeSlotPort.incrementStock(originalTimeSlotId, originalGuestCount);
+            timeSlotPort.decrementStock(newTimeSlotId, newGuestCount);
         }
 
         return toResult(saved, courses);
@@ -100,7 +113,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         reservation.cancel();
         reservationRepository.save(reservation);
 
-        timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getReservedDate());
+        timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
     }
 
     @Override
@@ -141,11 +154,14 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
     // noshowDeadline = slotStartTime + 30분 이므로, 역산: slotStartTime = noshowDeadline - 30분
     private LocalDateTime resolveNoshowDeadline(Reservation existing, LocalDate requestedDate,
-                                                LocalDate effectiveDate) {
-        if (requestedDate == null) {
+                                                LocalTime requestedSlotStartTime, LocalDate effectiveDate) {
+        if (requestedDate == null && requestedSlotStartTime == null) {
             return existing.getNoshowDeadline();
         }
-        LocalTime slotStartTime = existing.getNoshowDeadline().toLocalTime().minusMinutes(30);
+        // slotStartTime 명시 → 그대로 사용 / 미제공 → 기존 noshowDeadline에서 역산
+        LocalTime slotStartTime = requestedSlotStartTime != null
+                ? requestedSlotStartTime
+                : existing.getNoshowDeadline().toLocalTime().minusMinutes(30);
         return LocalDateTime.of(effectiveDate, slotStartTime).plusMinutes(30);
     }
 
