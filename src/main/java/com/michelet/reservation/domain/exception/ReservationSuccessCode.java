@@ -9,7 +9,8 @@ public enum ReservationSuccessCode implements SuccessCode {
     RESERVATION_MODIFIED("RESERVATION_SUCCESS_003", "예약이 수정되었습니다."),
     RESERVATION_VALIDITY_CHECKED("RESERVATION_SUCCESS_004", "예약 유효성 확인이 완료되었습니다."),
     RESERVATION_CHECKED_IN("RESERVATION_SUCCESS_005", "체크인이 완료되었습니다."),
-    RESERVATION_EXISTS_CHECKED("RESERVATION_SUCCESS_006", "예약 존재 여부 확인이 완료되었습니다.");
+    RESERVATION_EXISTS_CHECKED("RESERVATION_SUCCESS_006", "예약 존재 여부 확인이 완료되었습니다."),
+    RESERVATION_ACTIVE_CHECKED("RESERVATION_SUCCESS_007", "진행 중인 예약 존재 여부 확인이 완료되었습니다.");
 
     private final String code;
     private final String message;

@@ -6,6 +6,7 @@ import com.michelet.reservation.domain.exception.ReservationSuccessCode;
 import com.michelet.reservation.application.reservation.ReservationQueryService;
 import com.michelet.reservation.application.reservation.command.CheckInCommand;
 import com.michelet.reservation.presentation.reservation.dto.request.CheckInRequest;
+import com.michelet.reservation.presentation.reservation.dto.response.ReservationActiveResponse;
 import com.michelet.reservation.presentation.reservation.dto.response.ReservationExistsResponse;
 import com.michelet.reservation.presentation.reservation.dto.response.ReservationStatusResponse;
 import com.michelet.reservation.presentation.reservation.dto.response.ReservationValidityResponse;
@@ -52,5 +53,13 @@ public class ReservationInternalController {
     ) {
         return ApiResponse.ok(ReservationSuccessCode.RESERVATION_EXISTS_CHECKED,
                 ReservationExistsResponse.from(queryService.checkExists(reservationId, userId, restaurantId)));
+    }
+
+    @GetMapping("/active")
+    public ApiResponse<ReservationActiveResponse> checkActiveReservation(
+            @RequestParam UUID userId
+    ) {
+        return ApiResponse.ok(ReservationSuccessCode.RESERVATION_ACTIVE_CHECKED,
+                ReservationActiveResponse.from(queryService.hasActiveReservation(userId)));
     }
 }
