@@ -1,6 +1,7 @@
 package com.michelet.reservation.application.reservation;
 
 import com.michelet.common.exception.BusinessException;
+import com.michelet.reservation.application.reservation.result.ReservationActiveResult;
 import com.michelet.reservation.application.reservation.result.ReservationExistsResult;
 import com.michelet.reservation.application.reservation.result.ReservationValidityResult;
 import com.michelet.reservation.domain.entity.Reservation;
@@ -209,6 +210,30 @@ class ReservationQueryServiceTest {
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(cancelled));
 
             ReservationExistsResult result = queryService.checkExists(reservationId, userId, restaurantId);
+
+            assertThat(result.exists()).isFalse();
+        }
+    }
+
+    @Nested
+    class HasActiveReservation {
+
+        @Test
+        void CONFIRMED_예약이_있으면_exists_true() {
+            when(reservationRepository.existsByUserIdAndStatus(userId, ReservationStatus.CONFIRMED))
+                    .thenReturn(true);
+
+            ReservationActiveResult result = queryService.hasActiveReservation(userId);
+
+            assertThat(result.exists()).isTrue();
+        }
+
+        @Test
+        void CONFIRMED_예약이_없으면_exists_false() {
+            when(reservationRepository.existsByUserIdAndStatus(userId, ReservationStatus.CONFIRMED))
+                    .thenReturn(false);
+
+            ReservationActiveResult result = queryService.hasActiveReservation(userId);
 
             assertThat(result.exists()).isFalse();
         }

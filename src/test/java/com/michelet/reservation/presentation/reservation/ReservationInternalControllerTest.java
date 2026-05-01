@@ -5,6 +5,7 @@ import com.michelet.common.exception.BusinessException;
 import com.michelet.common.exception.GlobalExceptionHandler;
 import com.michelet.reservation.application.reservation.ReservationCommandService;
 import com.michelet.reservation.application.reservation.ReservationQueryService;
+import com.michelet.reservation.application.reservation.result.ReservationActiveResult;
 import com.michelet.reservation.application.reservation.result.ReservationExistsResult;
 import com.michelet.reservation.application.reservation.result.ReservationStatusResult;
 import com.michelet.reservation.application.reservation.result.ReservationValidityResult;
@@ -162,6 +163,33 @@ class ReservationInternalControllerTest {
                             .param("reservationId", reservationId.toString())
                             .param("userId", userId.toString())
                             .param("restaurantId", restaurantId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.exists").value(false));
+        }
+    }
+
+    @Nested
+    class CheckActiveReservation {
+
+        @Test
+        void 진행중인_예약이_있으면_exists_true를_반환한다() throws Exception {
+            when(queryService.hasActiveReservation(userId))
+                    .thenReturn(ReservationActiveResult.found());
+
+            mockMvc.perform(get("/internal/reservations/active")
+                            .param("userId", userId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.exists").value(true));
+        }
+
+        @Test
+        void 진행중인_예약이_없으면_exists_false를_반환한다() throws Exception {
+            when(queryService.hasActiveReservation(userId))
+                    .thenReturn(ReservationActiveResult.notFound());
+
+            mockMvc.perform(get("/internal/reservations/active")
+                            .param("userId", userId.toString()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.exists").value(false));
         }

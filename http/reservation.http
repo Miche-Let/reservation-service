@@ -157,6 +157,23 @@ GET {{base_url}}/internal/reservations/verify?userId={{user_id}}&restaurantId={{
 
 ###
 
+### 5-1. [Internal] 진행 중인 예약 존재 여부 확인 (체크인 전)
+# [플로우] 회원 서비스가 탈퇴 요청 전 진행 중인 예약 차단 목적으로 호출 → userId의 CONFIRMED 예약 존재 여부 반환
+# [데이터] 1번에서 생성한 예약이 CONFIRMED 상태이므로 exists=true
+# [기대]   200 OK, exists=true
+GET {{base_url}}/internal/reservations/active?userId={{user_id}}
+
+> {%
+  client.test("200 OK", function() {
+    client.assert(response.status === 200, "Expected 200, got " + response.status);
+  });
+  client.test("exists true (체크인 전 CONFIRMED)", function() {
+    client.assert(response.body.data.exists === true, "Expected exists=true");
+  });
+%}
+
+###
+
 ### 6. [Internal] 체크인
 # [플로우] 5번 유효성 확인 후 레스토랑 서비스가 호출 → CONFIRMED → COMPLETED 상태 전환
 # [데이터] reservation_id + restaurantId (restaurantId 불일치 시 404)
@@ -181,14 +198,31 @@ Content-Type: application/json
 ###
 
 ### 7. [Internal] 예약 이력 존재 확인
-# [플로우] 커머스 서비스가 방문객 구매 자격 검증 목적으로 호출 → reservationId·userId·restaurantId 3개 모두 일치 + CONFIRMED/COMPLETED 상태인지 확인
+# [플로우] 커머스 서비스가 방문객 구매 자격 검증 목적으로 호출 → reservationId·userId·restaurantId 3개 모두 일치 + CONFIRMED 상태인지 확인
 # [데이터] 6번 체크인 완료 후 COMPLETED 상태가 된 예약으로 조회
-# [기대]   200 OK, exists=true
+# [기대]   200 OK, exists=false (checkExists는 CONFIRMED 상태만 검사)
 GET {{base_url}}/internal/reservations/exists?reservationId={{reservation_id}}&userId={{user_id}}&restaurantId={{restaurant_id}}
 
 > {%
   client.test("200 OK", function() {
     client.assert(response.status === 200, "Expected 200, got " + response.status);
+  });
+%}
+
+###
+
+### 8. [Internal] 진행 중인 예약 존재 여부 확인 (체크인 후)
+# [플로우] 6번 체크인 완료 후 동일 userId로 다시 조회 → COMPLETED 상태는 CONFIRMED가 아니므로 exists=false
+# [데이터] 체크인으로 COMPLETED 전환된 예약 보유 userId
+# [기대]   200 OK, exists=false (탈퇴 가능 상태)
+GET {{base_url}}/internal/reservations/active?userId={{user_id}}
+
+> {%
+  client.test("200 OK", function() {
+    client.assert(response.status === 200, "Expected 200, got " + response.status);
+  });
+  client.test("exists false (체크인 후 CONFIRMED 없음)", function() {
+    client.assert(response.body.data.exists === false, "Expected exists=false");
   });
 %}
 
