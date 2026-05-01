@@ -4,6 +4,7 @@ import com.michelet.common.exception.BusinessException;
 import com.michelet.reservation.application.reservation.command.CancelReservationCommand;
 import com.michelet.reservation.application.reservation.command.CheckInCommand;
 import com.michelet.reservation.application.reservation.command.CreateReservationCommand;
+import com.michelet.reservation.application.reservation.command.DeleteReservationCommand;
 import com.michelet.reservation.application.reservation.command.ModifyReservationCommand;
 import com.michelet.reservation.application.reservation.result.ReservationCourseResult;
 import com.michelet.reservation.application.reservation.result.ReservationResult;
@@ -113,6 +114,15 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         reservationRepository.save(reservation);
 
         timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
+    }
+
+    @Override
+    public void delete(DeleteReservationCommand command) {
+        Reservation reservation = findAndVerifyOwnership(command.reservationId(), command.userId(), command.userRole());
+        reservationRepository.delete(reservation.getId(), command.userId());
+        if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
+            timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
+        }
     }
 
     @Override

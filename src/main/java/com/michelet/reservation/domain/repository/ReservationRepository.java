@@ -25,4 +25,6 @@ public interface ReservationRepository {
     boolean existsByUserIdAndRestaurantIdAndStatusIn(UUID userId, UUID restaurantId, List<ReservationStatus> statuses);
 
     boolean existsByUserIdAndStatus(UUID userId, ReservationStatus status);
+
+    void delete(UUID id, UUID deletedBy);
 }

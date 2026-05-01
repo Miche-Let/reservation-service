@@ -64,4 +64,12 @@ public class ReservationJpaRepository implements ReservationRepository {
     public boolean existsByUserIdAndStatus(UUID userId, ReservationStatus status) {
         return jpaStore.existsByUserIdAndStatus(userId, status);
     }
+
+    @Override
+    public void delete(UUID id, UUID deletedBy) {
+        jpaStore.findById(id).ifPresent(entity -> {
+            entity.softDelete(deletedBy);
+            jpaStore.save(entity);
+        });
+    }
 }

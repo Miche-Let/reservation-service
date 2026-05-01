@@ -5,6 +5,7 @@ import com.michelet.reservation.application.reservation.ReservationCommandServic
 import com.michelet.reservation.domain.exception.ReservationSuccessCode;
 import com.michelet.reservation.application.reservation.ReservationQueryService;
 import com.michelet.reservation.application.reservation.command.CreateReservationCommand;
+import com.michelet.reservation.application.reservation.command.DeleteReservationCommand;
 import com.michelet.reservation.application.reservation.command.ModifyReservationCommand;
 import com.michelet.reservation.domain.enums.ReservationStatus;
 import com.michelet.reservation.presentation.reservation.dto.request.CreateReservationRequest;
@@ -19,6 +20,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -82,6 +84,17 @@ public class ReservationController {
         queryService.getDetail(userId, userRole, reservationId)
     );
     return ApiResponse.ok(ReservationSuccessCode.RESERVATION_FETCHED, response);
+  }
+
+  /* 권한: USER·OWNER·MASTER */
+  @DeleteMapping("/{reservationId}")
+  public ApiResponse<Void> delete(
+      @RequestHeader("X-User-Id") UUID userId,
+      @RequestHeader("X-User-Role") String userRole,
+      @PathVariable UUID reservationId
+  ) {
+    commandService.delete(new DeleteReservationCommand(reservationId, userId, userRole));
+    return ApiResponse.ok(ReservationSuccessCode.RESERVATION_DELETED, null);
   }
 
   /* 권한: USER·OWNER·MASTER — 조건: CONFIRMED + modify_deadline 이내 */
