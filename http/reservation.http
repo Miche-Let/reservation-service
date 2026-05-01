@@ -1,0 +1,119 @@
+### 1. 예약 등록
+# @name createReservation
+POST {{base_url}}/api/v1/reservations
+X-User-Id: {{user_id}}
+X-User-Role: USER
+X-Waiting-Token: {{waiting_token}}
+Content-Type: application/json
+
+{
+  "restaurantId": "{{restaurant_id}}",
+  "timeSlotId": "{{time_slot_id}}",
+  "reservedDate": "2026-06-01",
+  "slotStartTime": "18:00:00",
+  "guestCount": 2,
+  "courses": [
+    {
+      "courseId": "{{course_id}}",
+      "quantity": 1,
+      "unitPrice": 50000
+    }
+  ]
+}
+
+> {%
+  client.global.set("reservation_id", response.body.data.reservationId);
+  client.test("201 Created", () => client.assert.response.status === 201);
+%}
+
+###
+
+### 2. 내 예약 목록 조회
+GET {{base_url}}/api/v1/reservations?status=CONFIRMED&page=0&size=10
+X-User-Id: {{user_id}}
+
+> {%
+  client.test("200 OK", () => client.assert.response.status === 200);
+%}
+
+###
+
+### 3. 예약 상세 조회
+GET {{base_url}}/api/v1/reservations/{{reservation_id}}
+X-User-Id: {{user_id}}
+X-User-Role: USER
+
+> {%
+  client.test("200 OK", () => client.assert.response.status === 200);
+%}
+
+###
+
+### 4. 예약 수정 — guestCount만 변경
+PATCH {{base_url}}/api/v1/reservations/{{reservation_id}}
+X-User-Id: {{user_id}}
+X-User-Role: USER
+Content-Type: application/json
+
+{
+  "guestCount": 3
+}
+
+> {%
+  client.test("200 OK", () => client.assert.response.status === 200);
+%}
+
+###
+
+### 4-1. 예약 수정 — 날짜 + 슬롯 변경 (slotStartTime 필수)
+PATCH {{base_url}}/api/v1/reservations/{{reservation_id}}
+X-User-Id: {{user_id}}
+X-User-Role: USER
+Content-Type: application/json
+
+{
+  "reservedDate": "2026-06-10",
+  "slotStartTime": "19:00:00"
+}
+
+> {%
+  client.test("200 OK", () => client.assert.response.status === 200);
+%}
+
+###
+
+### 5. [Internal] 예약 유효성 확인
+GET {{base_url}}/internal/reservations/verify?userId={{user_id}}&restaurantId={{restaurant_id}}
+
+> {%
+  client.test("200 OK", () => client.assert.response.status === 200);
+%}
+
+###
+
+### 6. [Internal] 체크인
+PATCH {{base_url}}/internal/reservations/check-in
+Content-Type: application/json
+
+{
+  "reservationId": "{{reservation_id}}",
+  "restaurantId": "{{restaurant_id}}"
+}
+
+> {%
+  client.test("200 OK", () => client.assert.response.status === 200);
+  client.test("status COMPLETED", () => {
+    client.assert.response.body.data.status === "COMPLETED";
+  });
+%}
+
+###
+
+### 7. [Internal] 예약 이력 존재 확인
+GET {{base_url}}/internal/reservations/exists?reservationId={{reservation_id}}&userId={{user_id}}&restaurantId={{restaurant_id}}
+
+> {%
+  client.test("200 OK", () => client.assert.response.status === 200);
+%}
+
+###
