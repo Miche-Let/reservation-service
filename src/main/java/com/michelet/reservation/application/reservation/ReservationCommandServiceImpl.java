@@ -42,9 +42,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         // TODO: 1차 — 대기열 토큰 서명 검증 (로컬, 추후 구현)
         // 2차 — 대기열 서비스에 토큰 유효성 확인 (userId·restaurantId 바인딩까지 검증)
         var tokenResult = waitingPort.verifyToken(command.waitingToken());
-        if (!tokenResult.valid()
-                || !command.userId().equals(tokenResult.userId())
-                || !command.restaurantId().equals(tokenResult.restaurantId())) {
+        if (!tokenResult.valid()) {
             throw new BusinessException(ReservationErrorCode.INVALID_WAITING_TOKEN);
         }
 
@@ -66,6 +64,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         // DB 저장 완료 후 외부 호출 — 롤백 시 Feign 미호출 보장 (단, 커밋 전 호출이므로 분산 트랜잭션 리스크 존재)
         timeSlotPort.decrementStock(saved.getTimeSlotId(), saved.getGuestCount().value());
+        waitingPort.completeWaiting(tokenResult.waitingId(), command.userId());
 
         return toResult(saved, savedCourses);
     }

@@ -103,49 +103,30 @@ class ReservationCommandServiceTest {
     @Nested
     class Create {
 
+        final UUID waitingId = UUID.randomUUID();
+
         @BeforeEach
         void stubDefaults() {
             when(waitingPort.verifyToken(anyString()))
-                    .thenReturn(new WaitingTokenResult(userId, restaurantId, true));
+                    .thenReturn(new WaitingTokenResult(waitingId, true));
             lenient().when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(
                     any(), any(), any(), any())).thenReturn(false);
         }
 
         @Test
-        void 정상_생성_시_예약이_저장되고_재고가_차감된다() {
+        void 정상_생성_시_예약이_저장되고_재고가_차감되고_대기열이_완료된다() {
             ReservationResult result = commandService.create(createCommand());
 
             assertThat(result).isNotNull();
             verify(reservationRepository).save(any(Reservation.class));
             verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2));
+            verify(waitingPort).completeWaiting(eq(waitingId), eq(userId));
         }
 
         @Test
         void 토큰이_유효하지_않으면_예외를_던진다() {
             when(waitingPort.verifyToken(anyString()))
-                    .thenReturn(new WaitingTokenResult(userId, restaurantId, false));
-
-            assertThatThrownBy(() -> commandService.create(createCommand()))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ReservationErrorCode.INVALID_WAITING_TOKEN.getCode()));
-        }
-
-        @Test
-        void 토큰의_userId가_불일치하면_예외를_던진다() {
-            when(waitingPort.verifyToken(anyString()))
-                    .thenReturn(new WaitingTokenResult(UUID.randomUUID(), restaurantId, true));
-
-            assertThatThrownBy(() -> commandService.create(createCommand()))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ReservationErrorCode.INVALID_WAITING_TOKEN.getCode()));
-        }
-
-        @Test
-        void 토큰의_restaurantId가_불일치하면_예외를_던진다() {
-            when(waitingPort.verifyToken(anyString()))
-                    .thenReturn(new WaitingTokenResult(userId, UUID.randomUUID(), true));
+                    .thenReturn(new WaitingTokenResult(waitingId, false));
 
             assertThatThrownBy(() -> commandService.create(createCommand()))
                     .isInstanceOf(BusinessException.class)

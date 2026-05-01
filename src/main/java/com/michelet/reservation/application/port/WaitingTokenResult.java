@@ -2,4 +2,4 @@ package com.michelet.reservation.application.port;
 
 import java.util.UUID;
 
-public record WaitingTokenResult(UUID userId, UUID restaurantId, boolean valid) {}
+public record WaitingTokenResult(UUID waitingId, boolean valid) {}

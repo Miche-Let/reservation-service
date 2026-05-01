@@ -19,7 +19,7 @@ public interface TimeSlotClient {
     /**
      * 예약 확정 시 남은 수용 인원 차감. 호출 시점: create() 저장 완료 후, modify() 날짜 변경 시 신규 날짜
      */
-    @PostMapping("/internal/v1/time-slots/{timeSlotId}/deduct")
+    @PostMapping("/internal/v1/timeslots/{timeSlotId}/deduct")
     ApiResponse<Void> decrementStock(
             @PathVariable("timeSlotId") UUID timeSlotId,
             @RequestBody TimeSlotDeductCapacityRequest request
