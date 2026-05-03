@@ -1,12 +1,11 @@
 package com.michelet.reservation.config;
 
-import org.slf4j.MDC;
+import com.michelet.common.auth.webmvc.context.UserContextHolder;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.AuditorAware;
-
-import java.util.Optional;
-import java.util.UUID;
 
 @Configuration
 public class AuditorConfig {
@@ -17,12 +16,12 @@ public class AuditorConfig {
   @Bean
   public AuditorAware<UUID> auditorAware() {
     return () -> {
-      String userId = MDC.get(MdcKeys.USER_ID);
-      if (userId == null || userId.isBlank()) {
+      var ctx = UserContextHolder.get();
+      if (ctx == null || !ctx.isAuthenticated()) {
         return Optional.of(SYSTEM_AUDITOR_ID);
       }
       try {
-        return Optional.of(UUID.fromString(userId));
+        return Optional.of(UUID.fromString(ctx.userId()));
       } catch (IllegalArgumentException e) {
         return Optional.of(SYSTEM_AUDITOR_ID);
       }
