@@ -134,26 +134,31 @@ class ReservationQueryServiceTest {
     class CheckValidity {
 
         @Test
-        void CONFIRMED_또는_COMPLETED_예약이_있으면_exists_true() {
-            when(reservationRepository.existsByUserIdAndRestaurantIdAndStatusIn(
+        void CONFIRMED_또는_COMPLETED_예약이_있으면_예약_정보를_반환한다() {
+            Reservation reservation = confirmedReservation();
+            when(reservationRepository.findFirstByUserIdAndRestaurantIdAndStatusIn(
                     eq(userId), eq(restaurantId),
                     eq(List.of(ReservationStatus.CONFIRMED, ReservationStatus.COMPLETED))))
-                    .thenReturn(true);
+                    .thenReturn(Optional.of(reservation));
 
             ReservationValidityResult result = queryService.checkValidity(userId, restaurantId);
 
             assertThat(result.exists()).isTrue();
+            assertThat(result.reservationId()).isEqualTo(reservationId);
+            assertThat(result.reservationDate()).isEqualTo(futureDate);
         }
 
         @Test
-        void 해당_예약이_없으면_exists_false() {
-            when(reservationRepository.existsByUserIdAndRestaurantIdAndStatusIn(
+        void 해당_예약이_없으면_exists_false_이고_나머지_필드는_null이다() {
+            when(reservationRepository.findFirstByUserIdAndRestaurantIdAndStatusIn(
                     eq(userId), eq(restaurantId), any()))
-                    .thenReturn(false);
+                    .thenReturn(Optional.empty());
 
             ReservationValidityResult result = queryService.checkValidity(userId, restaurantId);
 
             assertThat(result.exists()).isFalse();
+            assertThat(result.reservationId()).isNull();
+            assertThat(result.reservationDate()).isNull();
         }
     }
 
