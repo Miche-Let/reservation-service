@@ -17,6 +17,7 @@ import com.michelet.reservation.domain.repository.ReservationCourseRepository;
 import com.michelet.reservation.domain.repository.ReservationRepository;
 import com.michelet.reservation.domain.vo.GuestCount;
 import com.michelet.reservation.domain.vo.Money;
+import com.michelet.reservation.application.port.ReservationEventPort;
 import com.michelet.reservation.application.port.TimeSlotPort;
 import com.michelet.reservation.application.port.WaitingPort;
 import java.time.LocalDate;
@@ -37,6 +38,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     private final ReservationCourseRepository reservationCourseRepository;
     private final TimeSlotPort timeSlotPort;
     private final WaitingPort waitingPort;
+    private final ReservationEventPort reservationEventPort;
 
     @Override
     public ReservationResult create(CreateReservationCommand command) {
@@ -66,6 +68,14 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         // DB 저장 완료 후 외부 호출 — 롤백 시 Feign 미호출 보장 (단, 커밋 전 호출이므로 분산 트랜잭션 리스크 존재)
         timeSlotPort.decrementStock(saved.getTimeSlotId(), saved.getGuestCount().value());
         waitingPort.completeWaiting(tokenResult.waitingId(), command.userId());
+        reservationEventPort.publishReservationCreated(
+                saved.getId(),
+                saved.getUserId(),
+                saved.getRestaurantId(),
+                saved.getTimeSlotId(),
+                saved.getReservedDate(),
+                saved.getGuestCount().value()
+        );
 
         return toResult(saved, savedCourses);
     }
