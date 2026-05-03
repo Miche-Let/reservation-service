@@ -11,6 +11,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.michelet.common.auth.core.context.UserContext;
+import com.michelet.common.auth.core.enums.UserRole;
+import com.michelet.common.auth.webmvc.context.UserContextHolder;
 import com.michelet.common.exception.BusinessException;
 import com.michelet.common.exception.GlobalExceptionHandler;
 import com.michelet.reservation.application.reservation.ReservationCommandService;
@@ -26,6 +29,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +60,16 @@ class ReservationControllerTest {
     final UUID reservationId = UUID.randomUUID();
     final LocalDate futureDate = LocalDate.now().plusDays(10);
     final LocalTime slotStartTime = LocalTime.of(19, 0);
+
+    @BeforeEach
+    void setUpUserContext() {
+        UserContextHolder.set(new UserContext(userId.toString(), UserRole.USER));
+    }
+
+    @AfterEach
+    void clearUserContext() {
+        UserContextHolder.clear();
+    }
 
     ReservationResult reservationResult() {
         return new ReservationResult(
@@ -154,7 +169,8 @@ class ReservationControllerTest {
                     .thenReturn(new PageImpl<>(List.of(summary)));
 
             mockMvc.perform(get("/api/v1/reservations")
-                            .header("X-User-Id", userId))
+                            .header("X-User-Id", userId)
+                            .header("X-User-Role", "USER"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data.content[0].reservationId").value(reservationId.toString()));
@@ -167,6 +183,7 @@ class ReservationControllerTest {
 
             mockMvc.perform(get("/api/v1/reservations")
                             .header("X-User-Id", userId)
+                            .header("X-User-Role", "USER")
                             .param("status", "CONFIRMED"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.content").isArray());

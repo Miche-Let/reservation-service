@@ -1,14 +1,17 @@
 package com.michelet.reservation.presentation.reservation;
 
+import com.michelet.common.auth.core.annotation.RequireRole;
+import com.michelet.common.auth.core.enums.UserRole;
+import com.michelet.common.auth.webmvc.context.UserContextHolder;
 import com.michelet.common.response.ApiResponse;
-import com.michelet.reservation.common.GatewayHeaders;
 import com.michelet.reservation.application.reservation.ReservationCommandService;
-import com.michelet.reservation.domain.exception.ReservationSuccessCode;
 import com.michelet.reservation.application.reservation.ReservationQueryService;
 import com.michelet.reservation.application.reservation.command.CreateReservationCommand;
 import com.michelet.reservation.application.reservation.command.DeleteReservationCommand;
 import com.michelet.reservation.application.reservation.command.ModifyReservationCommand;
+import com.michelet.reservation.common.GatewayHeaders;
 import com.michelet.reservation.domain.enums.ReservationStatus;
+import com.michelet.reservation.domain.exception.ReservationSuccessCode;
 import com.michelet.reservation.presentation.reservation.dto.request.CreateReservationRequest;
 import com.michelet.reservation.presentation.reservation.dto.request.ModifyReservationRequest;
 import com.michelet.reservation.presentation.reservation.dto.response.ReservationResponse;
@@ -36,20 +39,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/reservations")
 @RequiredArgsConstructor
+@RequireRole({UserRole.USER, UserRole.OWNER, UserRole.MASTER})
 public class ReservationController {
 
   private final ReservationCommandService commandService;
   private final ReservationQueryService queryService;
 
-  /* 권한: USER */
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
+  @RequireRole(UserRole.USER)
   public ApiResponse<ReservationResponse> create(
-      @RequestHeader(GatewayHeaders.USER_ID) UUID userId,
-      @RequestHeader(GatewayHeaders.USER_ROLE) String userRole,
       @RequestHeader(GatewayHeaders.WAITING_TOKEN) String waitingToken,
       @RequestBody @Valid CreateReservationRequest request
   ) {
+    UUID userId = currentUserId();
     List<CreateReservationCommand.CourseItem> courses = request.courses().stream()
         .map(c -> new CreateReservationCommand.CourseItem(c.courseId(), c.quantity(), c.unitPrice()))
         .toList();
@@ -62,47 +65,37 @@ public class ReservationController {
     return ApiResponse.ok(ReservationSuccessCode.RESERVATION_CREATED, response);
   }
 
-  /* 권한: USER */
   @GetMapping
+  @RequireRole(UserRole.USER)
   public ApiResponse<Page<ReservationSummaryResponse>> getMyReservations(
-      @RequestHeader(GatewayHeaders.USER_ID) UUID userId,
       @RequestParam(required = false) ReservationStatus status,
       @PageableDefault(size = 10) Pageable pageable
   ) {
-    Page<ReservationSummaryResponse> response = queryService.getList(userId, status, pageable)
+    Page<ReservationSummaryResponse> response = queryService.getList(currentUserId(), status, pageable)
         .map(ReservationSummaryResponse::from);
     return ApiResponse.ok(ReservationSuccessCode.RESERVATION_FETCHED, response);
   }
 
-  /* 권한: USER·OWNER·MASTER */
   @GetMapping("/{reservationId}")
   public ApiResponse<ReservationResponse> getReservation(
-      @RequestHeader(GatewayHeaders.USER_ID) UUID userId,
-      @RequestHeader(GatewayHeaders.USER_ROLE) String userRole,
       @PathVariable UUID reservationId
   ) {
     ReservationResponse response = ReservationResponse.from(
-        queryService.getDetail(userId, userRole, reservationId)
+        queryService.getDetail(currentUserId(), currentUserRole(), reservationId)
     );
     return ApiResponse.ok(ReservationSuccessCode.RESERVATION_FETCHED, response);
   }
 
-  /* 권한: USER·OWNER·MASTER */
   @DeleteMapping("/{reservationId}")
   public ApiResponse<Void> delete(
-      @RequestHeader(GatewayHeaders.USER_ID) UUID userId,
-      @RequestHeader(GatewayHeaders.USER_ROLE) String userRole,
       @PathVariable UUID reservationId
   ) {
-    commandService.delete(new DeleteReservationCommand(reservationId, userId, userRole));
+    commandService.delete(new DeleteReservationCommand(reservationId, currentUserId(), currentUserRole()));
     return ApiResponse.ok(ReservationSuccessCode.RESERVATION_DELETED, null);
   }
 
-  /* 권한: USER·OWNER·MASTER — 조건: CONFIRMED + modify_deadline 이내 */
   @PatchMapping("/{reservationId}")
   public ApiResponse<ReservationResponse> modify(
-      @RequestHeader(GatewayHeaders.USER_ID) UUID userId,
-      @RequestHeader(GatewayHeaders.USER_ROLE) String userRole,
       @PathVariable UUID reservationId,
       @RequestBody @Valid ModifyReservationRequest request
   ) {
@@ -112,10 +105,18 @@ public class ReservationController {
             .toList();
     ReservationResponse response = ReservationResponse.from(
         commandService.modify(new ModifyReservationCommand(
-            reservationId, userId, userRole,
+            reservationId, currentUserId(), currentUserRole(),
             request.timeSlotId(), request.reservedDate(), request.slotStartTime(), request.guestCount(), courses
         ))
     );
     return ApiResponse.ok(ReservationSuccessCode.RESERVATION_MODIFIED, response);
+  }
+
+  private UUID currentUserId() {
+    return UUID.fromString(UserContextHolder.get().userId());
+  }
+
+  private String currentUserRole() {
+    return UserContextHolder.get().role().name();
   }
 }

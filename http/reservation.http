@@ -60,6 +60,7 @@ Content-Type: application/json
 # [기대]   200 OK, content 배열에 1번 예약 포함
 GET {{base_url}}/api/v1/reservations?page=0&size=10
 X-User-Id: {{user_id}}
+X-User-Role: USER
 
 > {%
   client.test("200 OK", function() {
@@ -75,6 +76,7 @@ X-User-Id: {{user_id}}
 # [기대]   200 OK, content 배열에 CONFIRMED 예약만 포함
 GET {{base_url}}/api/v1/reservations?status=CONFIRMED&page=0&size=10
 X-User-Id: {{user_id}}
+X-User-Role: USER
 
 > {%
   client.test("200 OK", function() {
