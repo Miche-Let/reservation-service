@@ -56,10 +56,14 @@ public class ReservationJpaEntity  extends BaseJpaEntity {
   @Column(name = "noshow_deadline", nullable = false)
   private LocalDateTime noshowDeadline;
 
+  @Column(name = "checked_in_at")
+  private LocalDateTime checkedInAt;
+
   public static ReservationJpaEntity of(
       UUID id, UUID userId, UUID restaurantId, UUID timeSlotId,
       LocalDate reservedDate, int guestCount, ReservationStatus status,
-      LocalDate cancelDeadline, LocalDate modifyDeadline, LocalDateTime noshowDeadline
+      LocalDate cancelDeadline, LocalDate modifyDeadline, LocalDateTime noshowDeadline,
+      LocalDateTime checkedInAt
   ) {
     ReservationJpaEntity e = new ReservationJpaEntity();
     e.id             = id;
@@ -72,6 +76,7 @@ public class ReservationJpaEntity  extends BaseJpaEntity {
     e.cancelDeadline = cancelDeadline;
     e.modifyDeadline = modifyDeadline;
     e.noshowDeadline = noshowDeadline;
+    e.checkedInAt    = checkedInAt;
     return e;
   }
 
