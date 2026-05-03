@@ -1,6 +1,7 @@
 package com.michelet.reservation.infrastructure.client;
 
 import com.michelet.common.response.ApiResponse;
+import com.michelet.reservation.common.GatewayHeaders;
 import com.michelet.reservation.infrastructure.client.dto.WaitingTokenVerifyResponse;
 import java.util.UUID;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -21,6 +22,6 @@ public interface WaitingClient {
     @DeleteMapping("/internal/waitings/{waitingId}/complete")
     ApiResponse<Void> completeWaiting(
             @PathVariable("waitingId") UUID waitingId,
-            @RequestHeader("X-User-Id") UUID userId
+            @RequestHeader(GatewayHeaders.USER_ID) UUID userId
     );
 }

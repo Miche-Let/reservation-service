@@ -1,6 +1,7 @@
 package com.michelet.reservation.infrastructure.kafka.producer;
 
 import com.michelet.reservation.application.port.ReservationEventPort;
+import com.michelet.reservation.infrastructure.kafka.KafkaTopics;
 import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationCreatedEvent;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -15,7 +16,6 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ReservationEventProducer implements ReservationEventPort {
 
-    private static final String TOPIC_RESERVATION_CREATED = "reservation.created";
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
@@ -25,7 +25,7 @@ public class ReservationEventProducer implements ReservationEventPort {
         ReservationCreatedEvent event = new ReservationCreatedEvent(
                 reservationId, userId, restaurantId, timeSlotId, reservedDate, guestCount, LocalDateTime.now()
         );
-        kafkaTemplate.send(TOPIC_RESERVATION_CREATED, reservationId.toString(), event)
+        kafkaTemplate.send(KafkaTopics.RESERVATION_CREATED, reservationId.toString(), event)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
                         log.warn("[Kafka] reservation.created 발행 실패 — reservationId={}, cause={}", reservationId, ex.getMessage());

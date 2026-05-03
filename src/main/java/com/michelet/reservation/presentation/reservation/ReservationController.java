@@ -1,6 +1,7 @@
 package com.michelet.reservation.presentation.reservation;
 
 import com.michelet.common.response.ApiResponse;
+import com.michelet.reservation.common.GatewayHeaders;
 import com.michelet.reservation.application.reservation.ReservationCommandService;
 import com.michelet.reservation.domain.exception.ReservationSuccessCode;
 import com.michelet.reservation.application.reservation.ReservationQueryService;
@@ -44,9 +45,9 @@ public class ReservationController {
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   public ApiResponse<ReservationResponse> create(
-      @RequestHeader("X-User-Id") UUID userId,
-      @RequestHeader("X-User-Role") String userRole,
-      @RequestHeader("X-Waiting-Token") String waitingToken,
+      @RequestHeader(GatewayHeaders.USER_ID) UUID userId,
+      @RequestHeader(GatewayHeaders.USER_ROLE) String userRole,
+      @RequestHeader(GatewayHeaders.WAITING_TOKEN) String waitingToken,
       @RequestBody @Valid CreateReservationRequest request
   ) {
     List<CreateReservationCommand.CourseItem> courses = request.courses().stream()
@@ -64,7 +65,7 @@ public class ReservationController {
   /* 권한: USER */
   @GetMapping
   public ApiResponse<Page<ReservationSummaryResponse>> getMyReservations(
-      @RequestHeader("X-User-Id") UUID userId,
+      @RequestHeader(GatewayHeaders.USER_ID) UUID userId,
       @RequestParam(required = false) ReservationStatus status,
       @PageableDefault(size = 10) Pageable pageable
   ) {
@@ -76,8 +77,8 @@ public class ReservationController {
   /* 권한: USER·OWNER·MASTER */
   @GetMapping("/{reservationId}")
   public ApiResponse<ReservationResponse> getReservation(
-      @RequestHeader("X-User-Id") UUID userId,
-      @RequestHeader("X-User-Role") String userRole,
+      @RequestHeader(GatewayHeaders.USER_ID) UUID userId,
+      @RequestHeader(GatewayHeaders.USER_ROLE) String userRole,
       @PathVariable UUID reservationId
   ) {
     ReservationResponse response = ReservationResponse.from(
@@ -89,8 +90,8 @@ public class ReservationController {
   /* 권한: USER·OWNER·MASTER */
   @DeleteMapping("/{reservationId}")
   public ApiResponse<Void> delete(
-      @RequestHeader("X-User-Id") UUID userId,
-      @RequestHeader("X-User-Role") String userRole,
+      @RequestHeader(GatewayHeaders.USER_ID) UUID userId,
+      @RequestHeader(GatewayHeaders.USER_ROLE) String userRole,
       @PathVariable UUID reservationId
   ) {
     commandService.delete(new DeleteReservationCommand(reservationId, userId, userRole));
@@ -100,8 +101,8 @@ public class ReservationController {
   /* 권한: USER·OWNER·MASTER — 조건: CONFIRMED + modify_deadline 이내 */
   @PatchMapping("/{reservationId}")
   public ApiResponse<ReservationResponse> modify(
-      @RequestHeader("X-User-Id") UUID userId,
-      @RequestHeader("X-User-Role") String userRole,
+      @RequestHeader(GatewayHeaders.USER_ID) UUID userId,
+      @RequestHeader(GatewayHeaders.USER_ROLE) String userRole,
       @PathVariable UUID reservationId,
       @RequestBody @Valid ModifyReservationRequest request
   ) {

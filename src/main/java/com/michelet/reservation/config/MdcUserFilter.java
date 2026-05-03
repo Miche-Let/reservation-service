@@ -1,5 +1,6 @@
 package com.michelet.reservation.config;
 
+import com.michelet.reservation.common.GatewayHeaders;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,24 +14,22 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class MdcUserFilter extends OncePerRequestFilter {
 
-    private static final String USER_ID_HEADER = "X-User-Id";
-    private static final String MDC_USER_ID_KEY = "userId";
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
-        String userIdHeader = request.getHeader(USER_ID_HEADER);
+        String userIdHeader = request.getHeader(GatewayHeaders.USER_ID);
         if (userIdHeader != null) {
             String userId = userIdHeader.trim();
             if (!userId.isBlank()) {
-                MDC.put(MDC_USER_ID_KEY, userId);
+                MDC.put(MdcKeys.USER_ID, userId);
             }
         }
         try {
             filterChain.doFilter(request, response);
         } finally {
-            MDC.remove(MDC_USER_ID_KEY);
+            MDC.remove(MdcKeys.USER_ID);
         }
     }
 }
