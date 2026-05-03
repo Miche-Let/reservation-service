@@ -3,3 +3,6 @@ waiting:
 
 timeslot:
   stub: true
+
+kafka:
+  stub: true
