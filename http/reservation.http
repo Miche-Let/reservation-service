@@ -162,9 +162,6 @@ GET {{base_url}}/internal/reservations/verify?userId={{user_id}}&restaurantId={{
   client.test("reservationDate 존재", function() {
     client.assert(response.body.data.reservationDate != null, "Expected reservationDate");
   });
-  if (response.body.data.reservationId) {
-    client.global.set("reservation_id", response.body.data.reservationId);
-  }
 %}
 
 ###
