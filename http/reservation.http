@@ -226,18 +226,22 @@ GET {{base_url}}/internal/reservations/exists?reservationId={{reservation_id}}&u
 
 ###
 
-### 8. [Internal] 진행 중인 예약 존재 여부 확인 (체크인 후)
-# [플로우] 6번 체크인 완료 후 동일 userId로 다시 조회 → COMPLETED 상태는 CONFIRMED가 아니므로 exists=false
-# [데이터] 체크인으로 COMPLETED 전환된 예약 보유 userId
-# [기대]   200 OK, exists=false (탈퇴 가능 상태)
-GET {{base_url}}/internal/reservations/active?userId={{user_id}}
+### 8. 체크인 완료 후 예약 상태 확인
+# [플로우] 6번 체크인 완료 후 해당 예약의 상태가 COMPLETED인지 직접 확인
+# [데이터] 6번에서 체크인한 reservation_id
+# [기대]   200 OK, status=COMPLETED
+# [참고]   active 엔드포인트(userId 전체 조회)는 이전 테스트 실행에서 남은 CONFIRMED 예약이
+#          있으면 exists=true가 반환될 수 있어 신뢰성이 낮음 — 현재 예약 단건 조회로 대체
+GET {{base_url}}/api/v1/reservations/{{reservation_id}}
+X-User-Id: {{user_id}}
+X-User-Role: USER
 
 > {%
   client.test("200 OK", function() {
     client.assert(response.status === 200, "Expected 200, got " + response.status);
   });
-  client.test("exists false (체크인 후 CONFIRMED 없음)", function() {
-    client.assert(response.body.data.exists === false, "Expected exists=false");
+  client.test("status COMPLETED (체크인 완료)", function() {
+    client.assert(response.body.data.status === "COMPLETED", "Expected status=COMPLETED");
   });
 %}
 
