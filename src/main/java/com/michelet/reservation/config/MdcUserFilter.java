@@ -20,9 +20,12 @@ public class MdcUserFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
-        String userId = request.getHeader(USER_ID_HEADER);
-        if (userId != null && !userId.isBlank()) {
-            MDC.put(MDC_USER_ID_KEY, userId);
+        String userIdHeader = request.getHeader(USER_ID_HEADER);
+        if (userIdHeader != null) {
+            String userId = userIdHeader.trim();
+            if (!userId.isBlank()) {
+                MDC.put(MDC_USER_ID_KEY, userId);
+            }
         }
         try {
             filterChain.doFilter(request, response);
