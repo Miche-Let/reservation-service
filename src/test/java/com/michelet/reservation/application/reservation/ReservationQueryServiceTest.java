@@ -54,7 +54,7 @@ class ReservationQueryServiceTest {
                 reservationId, userId, restaurantId, timeSlotId,
                 futureDate, GuestCount.of(2), ReservationStatus.CONFIRMED,
                 futureDate.minusDays(2), futureDate.minusDays(2),
-                LocalDateTime.of(futureDate, LocalTime.of(19, 30))
+                LocalDateTime.of(futureDate, LocalTime.of(19, 30)), null
         );
     }
 
@@ -205,7 +205,7 @@ class ReservationQueryServiceTest {
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.CANCELLED,
                     futureDate.minusDays(2), futureDate.minusDays(2),
-                    LocalDateTime.of(futureDate, LocalTime.of(19, 30))
+                    LocalDateTime.of(futureDate, LocalTime.of(19, 30)), null
             );
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(cancelled));
 
