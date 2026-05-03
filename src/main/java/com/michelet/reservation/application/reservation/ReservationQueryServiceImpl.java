@@ -54,9 +54,10 @@ public class ReservationQueryServiceImpl implements ReservationQueryService {
 
     @Override
     public ReservationValidityResult checkValidity(UUID userId, UUID restaurantId) {
-        boolean exists = reservationRepository.existsByUserIdAndRestaurantIdAndStatusIn(
-                userId, restaurantId, List.of(ReservationStatus.CONFIRMED, ReservationStatus.COMPLETED));
-        return exists ? ReservationValidityResult.found() : ReservationValidityResult.notFound();
+        return reservationRepository.findFirstByUserIdAndRestaurantIdAndStatusIn(
+                        userId, restaurantId, List.of(ReservationStatus.CONFIRMED, ReservationStatus.COMPLETED))
+                .map(ReservationValidityResult::found)
+                .orElseGet(ReservationValidityResult::notFound);
     }
 
     @Override

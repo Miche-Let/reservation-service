@@ -54,10 +54,11 @@ public class ReservationJpaRepository implements ReservationRepository {
     }
 
     @Override
-    public boolean existsByUserIdAndRestaurantIdAndStatusIn(
+    public Optional<Reservation> findFirstByUserIdAndRestaurantIdAndStatusIn(
             UUID userId, UUID restaurantId, List<ReservationStatus> statuses
     ) {
-        return jpaStore.existsByUserIdAndRestaurantIdAndStatusIn(userId, restaurantId, statuses);
+        return jpaStore.findFirstByUserIdAndRestaurantIdAndStatusIn(userId, restaurantId, statuses)
+                .map(ReservationMapper::toDomain);
     }
 
     @Override

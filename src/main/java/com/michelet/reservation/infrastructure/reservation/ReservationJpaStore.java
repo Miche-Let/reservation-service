@@ -4,6 +4,7 @@ import com.michelet.reservation.domain.enums.ReservationStatus;
 import com.michelet.reservation.infrastructure.reservation.entity.ReservationJpaEntity;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,7 +20,7 @@ public interface ReservationJpaStore extends JpaRepository<ReservationJpaEntity,
     boolean existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(UUID userId, UUID timeSlotId, LocalDate reservedDate,
                                                                ReservationStatus status);
 
-    boolean existsByUserIdAndRestaurantIdAndStatusIn(UUID userId, UUID restaurantId, List<ReservationStatus> statuses);
+    Optional<ReservationJpaEntity> findFirstByUserIdAndRestaurantIdAndStatusIn(UUID userId, UUID restaurantId, List<ReservationStatus> statuses);
 
     boolean existsByUserIdAndStatus(UUID userId, ReservationStatus status);
 }
