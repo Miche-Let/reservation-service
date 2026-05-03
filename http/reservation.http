@@ -144,15 +144,27 @@ Content-Type: application/json
 ###
 
 ### 5. [Internal] 예약 유효성 확인
-# [플로우] 레스토랑 서비스가 체크인 가능 여부 확인 목적으로 호출 → CONFIRMED/COMPLETED 예약 존재 여부 반환
+# [플로우] 레스토랑 서비스가 체크인 가능 여부 확인 목적으로 호출 → CONFIRMED/COMPLETED 예약 존재 여부 + 예약 ID/날짜 반환
 # [데이터] userId + restaurantId 조합으로 유효 상태 예약 조회
-# [기대]   200 OK, exists=true (1번에서 예약이 생성되어 있으므로)
+# [기대]   200 OK, exists=true, reservationId 및 reservationDate 포함
 GET {{base_url}}/internal/reservations/verify?userId={{user_id}}&restaurantId={{restaurant_id}}
 
 > {%
   client.test("200 OK", function() {
     client.assert(response.status === 200, "Expected 200, got " + response.status);
   });
+  client.test("exists true", function() {
+    client.assert(response.body.data.exists === true, "Expected exists=true");
+  });
+  client.test("reservationId 존재", function() {
+    client.assert(response.body.data.reservationId != null, "Expected reservationId");
+  });
+  client.test("reservationDate 존재", function() {
+    client.assert(response.body.data.reservationDate != null, "Expected reservationDate");
+  });
+  if (response.body.data.reservationId) {
+    client.global.set("reservation_id", response.body.data.reservationId);
+  }
 %}
 
 ###
