@@ -18,6 +18,6 @@ public class StubReservationEventAdapter implements ReservationEventPort {
     @Override
     public void publishReservationCreated(UUID reservationId, UUID userId, UUID restaurantId,
                                           UUID timeSlotId, LocalDate reservedDate, int guestCount) {
-        log.info("[STUB] publishReservationCreated skipped — reservationId={}", reservationId);
+        log.debug("[STUB] publishReservationCreated skipped — reservationId={}", reservationId);
     }
 }

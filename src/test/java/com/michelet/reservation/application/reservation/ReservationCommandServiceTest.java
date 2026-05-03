@@ -19,6 +19,7 @@ import com.michelet.reservation.application.port.WaitingTokenResult;
 import com.michelet.reservation.application.reservation.command.CancelReservationCommand;
 import com.michelet.reservation.application.reservation.command.CheckInCommand;
 import com.michelet.reservation.application.reservation.command.CreateReservationCommand;
+import com.michelet.reservation.application.reservation.command.DeleteReservationCommand;
 import com.michelet.reservation.application.reservation.command.ModifyReservationCommand;
 import com.michelet.reservation.application.reservation.result.ReservationResult;
 import com.michelet.reservation.domain.entity.Reservation;
@@ -124,6 +125,8 @@ class ReservationCommandServiceTest {
             verify(reservationRepository).save(any(Reservation.class));
             verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2));
             verify(waitingPort).completeWaiting(eq(waitingId), eq(userId));
+            verify(reservationEventPort).publishReservationCreated(
+                    any(), eq(userId), eq(restaurantId), eq(timeSlotId), eq(futureDate), eq(2));
         }
 
         @Test
@@ -356,6 +359,65 @@ class ReservationCommandServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.CANCEL_DEADLINE_EXCEEDED.getCode()));
+        }
+    }
+
+    @Nested
+    class Delete {
+
+        @Test
+        void CONFIRMED_예약_삭제_시_재고를_복구한다() {
+            Reservation reservation = confirmedReservation();
+            when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+
+            commandService.delete(new DeleteReservationCommand(reservationId, userId, "USER"));
+
+            verify(reservationRepository).delete(eq(reservationId), eq(userId));
+            verify(timeSlotPort).incrementStock(eq(timeSlotId), eq(2));
+        }
+
+        @Test
+        void CANCELLED_예약_삭제_시_재고를_복구하지_않는다() {
+            Reservation reservation = Reservation.reconstitute(
+                    reservationId, userId, restaurantId, timeSlotId,
+                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED,
+                    futureDate.minusDays(2), futureDate.minusDays(2),
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+            );
+            when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+
+            commandService.delete(new DeleteReservationCommand(reservationId, userId, "USER"));
+
+            verify(reservationRepository).delete(eq(reservationId), eq(userId));
+            verify(timeSlotPort, never()).incrementStock(any(), anyInt());
+        }
+
+        @Test
+        void COMPLETED_예약_삭제_시_재고를_복구하지_않는다() {
+            Reservation reservation = Reservation.reconstitute(
+                    reservationId, userId, restaurantId, timeSlotId,
+                    futureDate, GuestCount.of(2), ReservationStatus.COMPLETED,
+                    futureDate.minusDays(2), futureDate.minusDays(2),
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+            );
+            when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+
+            commandService.delete(new DeleteReservationCommand(reservationId, userId, "USER"));
+
+            verify(reservationRepository).delete(eq(reservationId), eq(userId));
+            verify(timeSlotPort, never()).incrementStock(any(), anyInt());
+        }
+
+        @Test
+        void 소유자가_아니면_예외를_던진다() {
+            Reservation reservation = confirmedReservation();
+            when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+
+            assertThatThrownBy(() ->
+                    commandService.delete(new DeleteReservationCommand(reservationId, UUID.randomUUID(), "USER")))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.RESERVATION_NOT_FOUND.getCode()));
         }
     }
 

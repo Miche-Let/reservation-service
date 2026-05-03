@@ -42,8 +42,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
     @Override
     public ReservationResult create(CreateReservationCommand command) {
-        // TODO: 1차 — 대기열 토큰 서명 검증 (로컬, 추후 구현)
-        // 2차 — 대기열 서비스에 토큰 유효성 확인 (userId·restaurantId 바인딩까지 검증)
+        // waiting-service가 ACTIVE 상태인지 확인 — userId·restaurantId 바인딩 검증은
+        // waiting-service API가 해당 필드를 응답에 포함할 때 추가 예정
         var tokenResult = waitingPort.verifyToken(command.waitingToken());
         if (!tokenResult.valid()) {
             throw new BusinessException(ReservationErrorCode.INVALID_WAITING_TOKEN);
