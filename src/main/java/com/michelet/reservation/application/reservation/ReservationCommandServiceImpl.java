@@ -151,8 +151,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     }
 
     private void checkDuplicate(UUID userId, UUID timeSlotId, LocalDate reservedDate) {
-        if (reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(
-                userId, timeSlotId, reservedDate, ReservationStatus.CANCELLED)) {
+        if (reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(
+                userId, timeSlotId, reservedDate, ReservationStatus.CONFIRMED)) {
             throw new BusinessException(ReservationErrorCode.DUPLICATE_RESERVATION);
         }
     }

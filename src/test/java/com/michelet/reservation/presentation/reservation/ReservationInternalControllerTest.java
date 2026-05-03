@@ -76,7 +76,8 @@ class ReservationInternalControllerTest {
         @Test
         void 정상_체크인_시_200과_COMPLETED_상태를_반환한다() throws Exception {
             when(commandService.checkIn(any()))
-                    .thenReturn(new ReservationStatusResult(reservationId, ReservationStatus.COMPLETED));
+                    .thenReturn(new ReservationStatusResult(reservationId, ReservationStatus.COMPLETED,
+                            java.time.LocalDate.of(2026, 6, 1), java.time.LocalDateTime.now()));
 
             CheckInRequest req = new CheckInRequest(reservationId, restaurantId);
 

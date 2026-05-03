@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.michelet.common.exception.BusinessException;
+import com.michelet.reservation.application.port.ReservationEventPort;
 import com.michelet.reservation.application.port.TimeSlotPort;
 import com.michelet.reservation.application.port.WaitingPort;
 import com.michelet.reservation.application.port.WaitingTokenResult;
@@ -52,6 +53,8 @@ class ReservationCommandServiceTest {
     TimeSlotPort timeSlotPort;
     @Mock
     WaitingPort waitingPort;
+    @Mock
+    ReservationEventPort reservationEventPort;
 
     @InjectMocks
     ReservationCommandServiceImpl commandService;
@@ -109,7 +112,7 @@ class ReservationCommandServiceTest {
         void stubDefaults() {
             when(waitingPort.verifyToken(anyString()))
                     .thenReturn(new WaitingTokenResult(waitingId, true));
-            lenient().when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(
+            lenient().when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(
                     any(), any(), any(), any())).thenReturn(false);
         }
 
@@ -136,7 +139,7 @@ class ReservationCommandServiceTest {
 
         @Test
         void 중복_예약이_있으면_예외를_던진다() {
-            when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(
+            when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(
                     any(), any(), any(), any())).thenReturn(true);
 
             assertThatThrownBy(() -> commandService.create(createCommand()))
@@ -278,7 +281,7 @@ class ReservationCommandServiceTest {
             Reservation reservation = confirmedReservation();
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
             UUID newSlotId = UUID.randomUUID();
-            when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(
+            when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(
                     eq(userId), eq(newSlotId), eq(futureDate), any())).thenReturn(true);
 
             assertThatThrownBy(() -> commandService.modify(new ModifyReservationCommand(
