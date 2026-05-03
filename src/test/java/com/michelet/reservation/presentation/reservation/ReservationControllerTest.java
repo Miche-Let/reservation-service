@@ -154,7 +154,8 @@ class ReservationControllerTest {
                     .thenReturn(new PageImpl<>(List.of(summary)));
 
             mockMvc.perform(get("/api/v1/reservations")
-                            .header("X-User-Id", userId))
+                            .header("X-User-Id", userId)
+                            .header("X-User-Role", "USER"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data.content[0].reservationId").value(reservationId.toString()));
@@ -167,6 +168,7 @@ class ReservationControllerTest {
 
             mockMvc.perform(get("/api/v1/reservations")
                             .header("X-User-Id", userId)
+                            .header("X-User-Role", "USER")
                             .param("status", "CONFIRMED"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.content").isArray());
