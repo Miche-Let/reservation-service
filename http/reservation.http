@@ -177,7 +177,7 @@ GET {{base_url}}/internal/reservations/active?userId={{user_id}}
 ### 6. [Internal] 체크인
 # [플로우] 5번 유효성 확인 후 레스토랑 서비스가 호출 → CONFIRMED → COMPLETED 상태 전환
 # [데이터] reservation_id + restaurantId (restaurantId 불일치 시 404)
-# [기대]   200 OK, status=COMPLETED
+# [기대]   200 OK, status=COMPLETED, visitDate 및 checkedInAt 포함
 PATCH {{base_url}}/internal/reservations/check-in
 Content-Type: application/json
 
@@ -192,6 +192,12 @@ Content-Type: application/json
   });
   client.test("status COMPLETED", function() {
     client.assert(response.body.data.status === "COMPLETED", "Expected COMPLETED");
+  });
+  client.test("visitDate 존재", function() {
+    client.assert(response.body.data.visitDate != null, "Expected visitDate");
+  });
+  client.test("checkedInAt 존재", function() {
+    client.assert(response.body.data.checkedInAt != null, "Expected checkedInAt");
   });
 %}
 
