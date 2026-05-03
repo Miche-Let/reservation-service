@@ -22,7 +22,7 @@ public interface ReservationRepository {
     boolean existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(UUID userId, UUID timeSlotId, LocalDate reservedDate,
                                                                 ReservationStatus status);
 
-    Optional<Reservation> findFirstByUserIdAndRestaurantIdAndStatusIn(UUID userId, UUID restaurantId, List<ReservationStatus> statuses);
+    Optional<Reservation> findTopByUserIdAndRestaurantIdAndStatusInOrderByReservedDateDesc(UUID userId, UUID restaurantId, List<ReservationStatus> statuses);
 
     boolean existsByUserIdAndStatus(UUID userId, ReservationStatus status);
 

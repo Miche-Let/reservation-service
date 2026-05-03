@@ -136,7 +136,7 @@ class ReservationQueryServiceTest {
         @Test
         void CONFIRMED_또는_COMPLETED_예약이_있으면_예약_정보를_반환한다() {
             Reservation reservation = confirmedReservation();
-            when(reservationRepository.findFirstByUserIdAndRestaurantIdAndStatusIn(
+            when(reservationRepository.findTopByUserIdAndRestaurantIdAndStatusInOrderByReservedDateDesc(
                     eq(userId), eq(restaurantId),
                     eq(List.of(ReservationStatus.CONFIRMED, ReservationStatus.COMPLETED))))
                     .thenReturn(Optional.of(reservation));
@@ -150,7 +150,7 @@ class ReservationQueryServiceTest {
 
         @Test
         void 해당_예약이_없으면_exists_false_이고_나머지_필드는_null이다() {
-            when(reservationRepository.findFirstByUserIdAndRestaurantIdAndStatusIn(
+            when(reservationRepository.findTopByUserIdAndRestaurantIdAndStatusInOrderByReservedDateDesc(
                     eq(userId), eq(restaurantId), any()))
                     .thenReturn(Optional.empty());
 

@@ -54,10 +54,10 @@ public class ReservationJpaRepository implements ReservationRepository {
     }
 
     @Override
-    public Optional<Reservation> findFirstByUserIdAndRestaurantIdAndStatusIn(
+    public Optional<Reservation> findTopByUserIdAndRestaurantIdAndStatusInOrderByReservedDateDesc(
             UUID userId, UUID restaurantId, List<ReservationStatus> statuses
     ) {
-        return jpaStore.findFirstByUserIdAndRestaurantIdAndStatusIn(userId, restaurantId, statuses)
+        return jpaStore.findTopByUserIdAndRestaurantIdAndStatusInOrderByReservedDateDesc(userId, restaurantId, statuses)
                 .map(ReservationMapper::toDomain);
     }
 
