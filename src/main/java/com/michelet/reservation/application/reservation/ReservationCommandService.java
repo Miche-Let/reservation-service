@@ -3,6 +3,7 @@ package com.michelet.reservation.application.reservation;
 import com.michelet.reservation.application.reservation.command.CancelReservationCommand;
 import com.michelet.reservation.application.reservation.command.CheckInCommand;
 import com.michelet.reservation.application.reservation.command.CreateReservationCommand;
+import com.michelet.reservation.application.reservation.command.DeleteReservationCommand;
 import com.michelet.reservation.application.reservation.command.ModifyReservationCommand;
 import com.michelet.reservation.application.reservation.result.ReservationResult;
 import com.michelet.reservation.application.reservation.result.ReservationStatusResult;
@@ -16,4 +17,6 @@ public interface ReservationCommandService {
   void cancel(CancelReservationCommand command);
 
   ReservationStatusResult checkIn(CheckInCommand command);
+
+  void delete(DeleteReservationCommand command);
 }

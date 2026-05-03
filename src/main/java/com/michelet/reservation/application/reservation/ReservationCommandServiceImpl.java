@@ -4,6 +4,7 @@ import com.michelet.common.exception.BusinessException;
 import com.michelet.reservation.application.reservation.command.CancelReservationCommand;
 import com.michelet.reservation.application.reservation.command.CheckInCommand;
 import com.michelet.reservation.application.reservation.command.CreateReservationCommand;
+import com.michelet.reservation.application.reservation.command.DeleteReservationCommand;
 import com.michelet.reservation.application.reservation.command.ModifyReservationCommand;
 import com.michelet.reservation.application.reservation.result.ReservationCourseResult;
 import com.michelet.reservation.application.reservation.result.ReservationResult;
@@ -16,6 +17,7 @@ import com.michelet.reservation.domain.repository.ReservationCourseRepository;
 import com.michelet.reservation.domain.repository.ReservationRepository;
 import com.michelet.reservation.domain.vo.GuestCount;
 import com.michelet.reservation.domain.vo.Money;
+import com.michelet.reservation.application.port.ReservationEventPort;
 import com.michelet.reservation.application.port.TimeSlotPort;
 import com.michelet.reservation.application.port.WaitingPort;
 import java.time.LocalDate;
@@ -36,15 +38,14 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     private final ReservationCourseRepository reservationCourseRepository;
     private final TimeSlotPort timeSlotPort;
     private final WaitingPort waitingPort;
+    private final ReservationEventPort reservationEventPort;
 
     @Override
     public ReservationResult create(CreateReservationCommand command) {
-        // TODO: 1차 — 대기열 토큰 서명 검증 (로컬, 추후 구현)
-        // 2차 — 대기열 서비스에 토큰 유효성 확인 (userId·restaurantId 바인딩까지 검증)
+        // waiting-service가 ACTIVE 상태인지 확인 — userId·restaurantId 바인딩 검증은
+        // waiting-service API가 해당 필드를 응답에 포함할 때 추가 예정
         var tokenResult = waitingPort.verifyToken(command.waitingToken());
-        if (!tokenResult.valid()
-                || !command.userId().equals(tokenResult.userId())
-                || !command.restaurantId().equals(tokenResult.restaurantId())) {
+        if (!tokenResult.valid()) {
             throw new BusinessException(ReservationErrorCode.INVALID_WAITING_TOKEN);
         }
 
@@ -66,6 +67,15 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         // DB 저장 완료 후 외부 호출 — 롤백 시 Feign 미호출 보장 (단, 커밋 전 호출이므로 분산 트랜잭션 리스크 존재)
         timeSlotPort.decrementStock(saved.getTimeSlotId(), saved.getGuestCount().value());
+        waitingPort.completeWaiting(tokenResult.waitingId(), command.userId());
+        reservationEventPort.publishReservationCreated(
+                saved.getId(),
+                saved.getUserId(),
+                saved.getRestaurantId(),
+                saved.getTimeSlotId(),
+                saved.getReservedDate(),
+                saved.getGuestCount().value()
+        );
 
         return toResult(saved, savedCourses);
     }
@@ -117,6 +127,15 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     }
 
     @Override
+    public void delete(DeleteReservationCommand command) {
+        Reservation reservation = findAndVerifyOwnership(command.reservationId(), command.userId(), command.userRole());
+        reservationRepository.delete(reservation.getId(), command.userId());
+        if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
+            timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
+        }
+    }
+
+    @Override
     public ReservationStatusResult checkIn(CheckInCommand command) {
         Reservation reservation = reservationRepository.findById(command.reservationId())
                 .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
@@ -132,8 +151,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     }
 
     private void checkDuplicate(UUID userId, UUID timeSlotId, LocalDate reservedDate) {
-        if (reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(
-                userId, timeSlotId, reservedDate, ReservationStatus.CANCELLED)) {
+        if (reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(
+                userId, timeSlotId, reservedDate, ReservationStatus.CONFIRMED)) {
             throw new BusinessException(ReservationErrorCode.DUPLICATE_RESERVATION);
         }
     }

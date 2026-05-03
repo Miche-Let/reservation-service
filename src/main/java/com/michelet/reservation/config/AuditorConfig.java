@@ -17,7 +17,7 @@ public class AuditorConfig {
   @Bean
   public AuditorAware<UUID> auditorAware() {
     return () -> {
-      String userId = MDC.get("userId");
+      String userId = MDC.get(MdcKeys.USER_ID);
       if (userId == null || userId.isBlank()) {
         return Optional.of(SYSTEM_AUDITOR_ID);
       }

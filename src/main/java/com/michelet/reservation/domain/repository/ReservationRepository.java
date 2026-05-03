@@ -19,10 +19,12 @@ public interface ReservationRepository {
 
     Page<Reservation> findPageByUserIdAndStatus(UUID userId, ReservationStatus status, Pageable pageable);
 
-    boolean existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(UUID userId, UUID timeSlotId, LocalDate reservedDate,
-                                                                   ReservationStatus status);
+    boolean existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(UUID userId, UUID timeSlotId, LocalDate reservedDate,
+                                                                ReservationStatus status);
 
-    boolean existsByUserIdAndRestaurantIdAndStatusIn(UUID userId, UUID restaurantId, List<ReservationStatus> statuses);
+    Optional<Reservation> findTopByUserIdAndRestaurantIdAndStatusInOrderByReservedDateDesc(UUID userId, UUID restaurantId, List<ReservationStatus> statuses);
 
     boolean existsByUserIdAndStatus(UUID userId, ReservationStatus status);
+
+    void delete(UUID id, UUID deletedBy);
 }

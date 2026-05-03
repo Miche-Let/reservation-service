@@ -12,12 +12,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.michelet.common.exception.BusinessException;
+import com.michelet.reservation.application.port.ReservationEventPort;
 import com.michelet.reservation.application.port.TimeSlotPort;
 import com.michelet.reservation.application.port.WaitingPort;
 import com.michelet.reservation.application.port.WaitingTokenResult;
 import com.michelet.reservation.application.reservation.command.CancelReservationCommand;
 import com.michelet.reservation.application.reservation.command.CheckInCommand;
 import com.michelet.reservation.application.reservation.command.CreateReservationCommand;
+import com.michelet.reservation.application.reservation.command.DeleteReservationCommand;
 import com.michelet.reservation.application.reservation.command.ModifyReservationCommand;
 import com.michelet.reservation.application.reservation.result.ReservationResult;
 import com.michelet.reservation.domain.entity.Reservation;
@@ -52,6 +54,8 @@ class ReservationCommandServiceTest {
     TimeSlotPort timeSlotPort;
     @Mock
     WaitingPort waitingPort;
+    @Mock
+    ReservationEventPort reservationEventPort;
 
     @InjectMocks
     ReservationCommandServiceImpl commandService;
@@ -68,7 +72,7 @@ class ReservationCommandServiceTest {
                 reservationId, userId, restaurantId, timeSlotId,
                 futureDate, GuestCount.of(2), ReservationStatus.CONFIRMED,
                 futureDate.minusDays(2), futureDate.minusDays(2),
-                LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30)
+                LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
         );
     }
 
@@ -80,7 +84,7 @@ class ReservationCommandServiceTest {
                 reservationId, userId, restaurantId, timeSlotId,
                 nearDate, GuestCount.of(2), ReservationStatus.CONFIRMED,
                 passedDeadline, passedDeadline,
-                LocalDateTime.of(nearDate, slotStartTime).plusMinutes(30)
+                LocalDateTime.of(nearDate, slotStartTime).plusMinutes(30), null
         );
     }
 
@@ -103,49 +107,32 @@ class ReservationCommandServiceTest {
     @Nested
     class Create {
 
+        final UUID waitingId = UUID.randomUUID();
+
         @BeforeEach
         void stubDefaults() {
             when(waitingPort.verifyToken(anyString()))
-                    .thenReturn(new WaitingTokenResult(userId, restaurantId, true));
-            lenient().when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(
+                    .thenReturn(new WaitingTokenResult(waitingId, true));
+            lenient().when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(
                     any(), any(), any(), any())).thenReturn(false);
         }
 
         @Test
-        void 정상_생성_시_예약이_저장되고_재고가_차감된다() {
+        void 정상_생성_시_예약이_저장되고_재고가_차감되고_대기열이_완료된다() {
             ReservationResult result = commandService.create(createCommand());
 
             assertThat(result).isNotNull();
             verify(reservationRepository).save(any(Reservation.class));
             verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2));
+            verify(waitingPort).completeWaiting(eq(waitingId), eq(userId));
+            verify(reservationEventPort).publishReservationCreated(
+                    any(), eq(userId), eq(restaurantId), eq(timeSlotId), eq(futureDate), eq(2));
         }
 
         @Test
         void 토큰이_유효하지_않으면_예외를_던진다() {
             when(waitingPort.verifyToken(anyString()))
-                    .thenReturn(new WaitingTokenResult(userId, restaurantId, false));
-
-            assertThatThrownBy(() -> commandService.create(createCommand()))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ReservationErrorCode.INVALID_WAITING_TOKEN.getCode()));
-        }
-
-        @Test
-        void 토큰의_userId가_불일치하면_예외를_던진다() {
-            when(waitingPort.verifyToken(anyString()))
-                    .thenReturn(new WaitingTokenResult(UUID.randomUUID(), restaurantId, true));
-
-            assertThatThrownBy(() -> commandService.create(createCommand()))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                            .isEqualTo(ReservationErrorCode.INVALID_WAITING_TOKEN.getCode()));
-        }
-
-        @Test
-        void 토큰의_restaurantId가_불일치하면_예외를_던진다() {
-            when(waitingPort.verifyToken(anyString()))
-                    .thenReturn(new WaitingTokenResult(userId, UUID.randomUUID(), true));
+                    .thenReturn(new WaitingTokenResult(waitingId, false));
 
             assertThatThrownBy(() -> commandService.create(createCommand()))
                     .isInstanceOf(BusinessException.class)
@@ -155,7 +142,7 @@ class ReservationCommandServiceTest {
 
         @Test
         void 중복_예약이_있으면_예외를_던진다() {
-            when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(
+            when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(
                     any(), any(), any(), any())).thenReturn(true);
 
             assertThatThrownBy(() -> commandService.create(createCommand()))
@@ -269,7 +256,7 @@ class ReservationCommandServiceTest {
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.CANCELLED,
                     futureDate.minusDays(2), futureDate.minusDays(2),
-                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30)
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
             );
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
@@ -297,7 +284,7 @@ class ReservationCommandServiceTest {
             Reservation reservation = confirmedReservation();
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
             UUID newSlotId = UUID.randomUUID();
-            when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(
+            when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(
                     eq(userId), eq(newSlotId), eq(futureDate), any())).thenReturn(true);
 
             assertThatThrownBy(() -> commandService.modify(new ModifyReservationCommand(
@@ -351,7 +338,7 @@ class ReservationCommandServiceTest {
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.COMPLETED,
                     futureDate.minusDays(2), futureDate.minusDays(2),
-                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30)
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
             );
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
@@ -372,6 +359,65 @@ class ReservationCommandServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.CANCEL_DEADLINE_EXCEEDED.getCode()));
+        }
+    }
+
+    @Nested
+    class Delete {
+
+        @Test
+        void CONFIRMED_예약_삭제_시_재고를_복구한다() {
+            Reservation reservation = confirmedReservation();
+            when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+
+            commandService.delete(new DeleteReservationCommand(reservationId, userId, "USER"));
+
+            verify(reservationRepository).delete(eq(reservationId), eq(userId));
+            verify(timeSlotPort).incrementStock(eq(timeSlotId), eq(2));
+        }
+
+        @Test
+        void CANCELLED_예약_삭제_시_재고를_복구하지_않는다() {
+            Reservation reservation = Reservation.reconstitute(
+                    reservationId, userId, restaurantId, timeSlotId,
+                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED,
+                    futureDate.minusDays(2), futureDate.minusDays(2),
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+            );
+            when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+
+            commandService.delete(new DeleteReservationCommand(reservationId, userId, "USER"));
+
+            verify(reservationRepository).delete(eq(reservationId), eq(userId));
+            verify(timeSlotPort, never()).incrementStock(any(), anyInt());
+        }
+
+        @Test
+        void COMPLETED_예약_삭제_시_재고를_복구하지_않는다() {
+            Reservation reservation = Reservation.reconstitute(
+                    reservationId, userId, restaurantId, timeSlotId,
+                    futureDate, GuestCount.of(2), ReservationStatus.COMPLETED,
+                    futureDate.minusDays(2), futureDate.minusDays(2),
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+            );
+            when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+
+            commandService.delete(new DeleteReservationCommand(reservationId, userId, "USER"));
+
+            verify(reservationRepository).delete(eq(reservationId), eq(userId));
+            verify(timeSlotPort, never()).incrementStock(any(), anyInt());
+        }
+
+        @Test
+        void 소유자가_아니면_예외를_던진다() {
+            Reservation reservation = confirmedReservation();
+            when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+
+            assertThatThrownBy(() ->
+                    commandService.delete(new DeleteReservationCommand(reservationId, UUID.randomUUID(), "USER")))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.RESERVATION_NOT_FOUND.getCode()));
         }
     }
 
@@ -417,7 +463,7 @@ class ReservationCommandServiceTest {
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.CANCELLED,
                     futureDate.minusDays(2), futureDate.minusDays(2),
-                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30)
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
             );
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 

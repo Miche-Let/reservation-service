@@ -46,22 +46,31 @@ public class ReservationJpaRepository implements ReservationRepository {
     }
 
     @Override
-    public boolean existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(
+    public boolean existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(
             UUID userId, UUID timeSlotId, LocalDate reservedDate, ReservationStatus status
     ) {
-        return jpaStore.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusNot(userId, timeSlotId, reservedDate,
+        return jpaStore.existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(userId, timeSlotId, reservedDate,
                 status);
     }
 
     @Override
-    public boolean existsByUserIdAndRestaurantIdAndStatusIn(
+    public Optional<Reservation> findTopByUserIdAndRestaurantIdAndStatusInOrderByReservedDateDesc(
             UUID userId, UUID restaurantId, List<ReservationStatus> statuses
     ) {
-        return jpaStore.existsByUserIdAndRestaurantIdAndStatusIn(userId, restaurantId, statuses);
+        return jpaStore.findTopByUserIdAndRestaurantIdAndStatusInOrderByReservedDateDesc(userId, restaurantId, statuses)
+                .map(ReservationMapper::toDomain);
     }
 
     @Override
     public boolean existsByUserIdAndStatus(UUID userId, ReservationStatus status) {
         return jpaStore.existsByUserIdAndStatus(userId, status);
+    }
+
+    @Override
+    public void delete(UUID id, UUID deletedBy) {
+        jpaStore.findById(id).ifPresent(entity -> {
+            entity.softDelete(deletedBy);
+            jpaStore.save(entity);
+        });
     }
 }

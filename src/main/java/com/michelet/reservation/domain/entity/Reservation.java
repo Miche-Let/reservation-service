@@ -31,6 +31,8 @@ public class Reservation {
 
   private LocalDateTime noshowDeadline;
 
+  private LocalDateTime checkedInAt;
+
   public static Reservation create(
       UUID userId,
       UUID restaurantId,
@@ -65,7 +67,8 @@ public class Reservation {
       ReservationStatus status,
       LocalDate cancelDeadline,
       LocalDate modifyDeadline,
-      LocalDateTime noshowDeadline
+      LocalDateTime noshowDeadline,
+      LocalDateTime checkedInAt
   ) {
     validateReconstituteInput(id,userId, restaurantId, timeSlotId, reservedDate, guestCount);
     Reservation r = new Reservation();
@@ -79,6 +82,7 @@ public class Reservation {
     r.cancelDeadline = cancelDeadline;
     r.modifyDeadline = modifyDeadline;
     r.noshowDeadline = noshowDeadline;
+    r.checkedInAt    = checkedInAt;
     return r;
   }
 
@@ -93,6 +97,7 @@ public class Reservation {
   public void complete() {
     validateTransition(ReservationStatus.CONFIRMED);
     this.status = ReservationStatus.COMPLETED;
+    this.checkedInAt = LocalDateTime.now();
   }
 
   public void markNoShow() {

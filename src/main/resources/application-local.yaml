@@ -1,5 +1,12 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+
 waiting:
   stub: true
 
 timeslot:
+  stub: true
+
+kafka:
   stub: true

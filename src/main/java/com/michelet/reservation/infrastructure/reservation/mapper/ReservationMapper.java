@@ -14,7 +14,8 @@ public class ReservationMapper {
         domain.getId(), domain.getUserId(), domain.getRestaurantId(),
         domain.getTimeSlotId(), domain.getReservedDate(),
         domain.getGuestCount().value(), domain.getStatus(),
-        domain.getCancelDeadline(), domain.getModifyDeadline(), domain.getNoshowDeadline()
+        domain.getCancelDeadline(), domain.getModifyDeadline(), domain.getNoshowDeadline(),
+        domain.getCheckedInAt()
     );
     if (domain.isNew()) {
       entity.markNew();
@@ -27,7 +28,8 @@ public class ReservationMapper {
         entity.getId(), entity.getUserId(), entity.getRestaurantId(),
         entity.getTimeSlotId(), entity.getReservedDate(),
         GuestCount.of(entity.getGuestCount()), entity.getStatus(),
-        entity.getCancelDeadline(), entity.getModifyDeadline(), entity.getNoshowDeadline()
+        entity.getCancelDeadline(), entity.getModifyDeadline(), entity.getNoshowDeadline(),
+        entity.getCheckedInAt()
     );
   }
 }

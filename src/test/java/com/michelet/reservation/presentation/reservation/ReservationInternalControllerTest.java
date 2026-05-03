@@ -21,6 +21,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -45,16 +46,19 @@ class ReservationInternalControllerTest {
     class CheckValidity {
 
         @Test
-        void 예약이_있으면_exists_true를_반환한다() throws Exception {
+        void 예약이_있으면_exists_true와_예약_정보를_반환한다() throws Exception {
+            LocalDate reservationDate = LocalDate.of(2026, 6, 1);
             when(queryService.checkValidity(userId, restaurantId))
-                    .thenReturn(ReservationValidityResult.found());
+                    .thenReturn(new ReservationValidityResult(true, reservationId, reservationDate));
 
             mockMvc.perform(get("/internal/reservations/verify")
                             .param("userId", userId.toString())
                             .param("restaurantId", restaurantId.toString()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data.exists").value(true));
+                    .andExpect(jsonPath("$.data.exists").value(true))
+                    .andExpect(jsonPath("$.data.reservationId").value(reservationId.toString()))
+                    .andExpect(jsonPath("$.data.reservationDate").value("2026-06-01"));
         }
 
         @Test
@@ -76,7 +80,8 @@ class ReservationInternalControllerTest {
         @Test
         void 정상_체크인_시_200과_COMPLETED_상태를_반환한다() throws Exception {
             when(commandService.checkIn(any()))
-                    .thenReturn(new ReservationStatusResult(reservationId, ReservationStatus.COMPLETED));
+                    .thenReturn(new ReservationStatusResult(reservationId, ReservationStatus.COMPLETED,
+                            java.time.LocalDate.of(2026, 6, 1), java.time.LocalDateTime.now()));
 
             CheckInRequest req = new CheckInRequest(reservationId, restaurantId);
 

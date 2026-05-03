@@ -26,7 +26,7 @@ class ReservationTest {
         return Reservation.reconstitute(
                 UUID.randomUUID(), userId, restaurantId, timeSlotId,
                 futureDate, GuestCount.of(2), ReservationStatus.CONFIRMED,
-                futureDate.minusDays(2), futureDate.minusDays(2), noshowDeadline
+                futureDate.minusDays(2), futureDate.minusDays(2), noshowDeadline, null
         );
     }
 
@@ -36,7 +36,7 @@ class ReservationTest {
                 UUID.randomUUID(), userId, restaurantId, timeSlotId,
                 pastDate, GuestCount.of(2), ReservationStatus.CONFIRMED,
                 LocalDate.now().minusDays(1), LocalDate.now().minusDays(1),
-                LocalDateTime.of(pastDate, LocalTime.of(19, 30))
+                LocalDateTime.of(pastDate, LocalTime.of(19, 30)), null
         );
     }
 

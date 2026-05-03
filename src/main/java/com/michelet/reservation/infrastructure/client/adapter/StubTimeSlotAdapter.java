@@ -16,11 +16,11 @@ public class StubTimeSlotAdapter implements TimeSlotPort {
 
     @Override
     public void decrementStock(UUID timeSlotId, int requiredCapacity) {
-        log.info("[STUB] decrementStock skipped — timeSlotId={}, requiredCapacity={}", timeSlotId, requiredCapacity);
+        log.debug("[STUB] decrementStock skipped — timeSlotId={}, requiredCapacity={}", timeSlotId, requiredCapacity);
     }
 
     @Override
     public void incrementStock(UUID timeSlotId, int requiredCapacity) {
-        log.info("[STUB] incrementStock skipped — timeSlotId={}, requiredCapacity={}", timeSlotId, requiredCapacity);
+        log.debug("[STUB] incrementStock skipped — timeSlotId={}, requiredCapacity={}", timeSlotId, requiredCapacity);
     }
 }
