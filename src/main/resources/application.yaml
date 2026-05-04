@@ -10,11 +10,11 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:create}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        default_schema: reservation_db
+        default_schema: reservation_service
         format_sql: true
         jdbc.time_zone: Asia/Seoul
         jdbc:
@@ -41,20 +41,16 @@ spring:
     config:
       enabled: false
     discovery:
-      enabled: false
-#eureka:
-#  client:
-#    service-url:
-#      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:19090}/eureka/
+      enabled: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8761}/eureka/
 
 internal:
-  secret: ${INTERNAL_SECRET:dev-secret}
-
-feign:
-  timeslot-service:
-    url: ${FEIGN_TIMESLOT_SERVICE_URL:http://localhost:19400}
-  waiting-service:
-    url: ${FEIGN_WAITING_SERVICE_URL:http://localhost:19300}
+  auth:
+    secret: ${INTERNAL_AUTH_SECRET:internal-secret}
 
 server:
   port: 19500
