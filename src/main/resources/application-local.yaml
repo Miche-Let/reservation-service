@@ -3,10 +3,10 @@ spring:
     bootstrap-servers: localhost:9092
 
 waiting:
-  stub: true
+  stub: false
 
 timeslot:
-  stub: true
+  stub: false
 
 kafka:
   stub: true
