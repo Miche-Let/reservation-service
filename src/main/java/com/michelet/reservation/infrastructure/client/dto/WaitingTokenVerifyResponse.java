@@ -10,5 +10,7 @@ public record WaitingTokenVerifyResponse(
         String status,
         LocalDateTime enteredAt,
         LocalDateTime activatedAt,
-        Long estimatedWaitSeconds
-) {}
+        Long estimatedWaitSeconds,
+        String accessToken
+) {
+}
