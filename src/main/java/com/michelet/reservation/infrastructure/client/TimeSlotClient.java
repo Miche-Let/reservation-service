@@ -10,8 +10,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(
         name = "timeslot-service"
-//        , configuration = InternalSecretFeignConfig.class
-        // todo : mvp 이후 InternalSecret 적용여부 판단
 )
 public interface TimeSlotClient {
 

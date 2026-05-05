@@ -21,7 +21,7 @@ public class WaitingAdapter implements WaitingPort {
     }
 
     @Override
-    public void completeWaiting(UUID waitingId, UUID userId) {
-        waitingClient.completeWaiting(waitingId, userId);
+    public void completeWaiting(UUID waitingId) {
+        waitingClient.completeWaiting(waitingId);
     }
 }

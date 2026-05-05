@@ -124,7 +124,7 @@ class ReservationCommandServiceTest {
             assertThat(result).isNotNull();
             verify(reservationRepository).save(any(Reservation.class));
             verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2));
-            verify(waitingPort).completeWaiting(eq(waitingId), eq(userId));
+            verify(waitingPort).completeWaiting(eq(waitingId));
             verify(reservationEventPort).publishReservationCreated(
                     any(), eq(userId), eq(restaurantId), eq(timeSlotId), eq(futureDate), eq(2));
         }

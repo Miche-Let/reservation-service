@@ -48,7 +48,13 @@ eureka:
 
 internal:
   auth:
-    secret: ${INTERNAL_AUTH_SECRET:internal-secret}
+    secret: ${INTERNAL_AUTH_SECRET}
+
+feign:
+  timeslot-service:
+    url: ${FEIGN_TIMESLOT_SERVICE_URL:http://localhost:19400}
+  waiting-service:
+    url: ${FEIGN_WAITING_SERVICE_URL:http://localhost:19300}
 
 server:
   port: 19500
