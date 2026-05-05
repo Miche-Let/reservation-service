@@ -9,7 +9,7 @@ version = '0.0.1-SNAPSHOT'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(17)
     }
 }
 
@@ -25,7 +25,7 @@ ext {
 dependencies {
     implementation 'com.github.Miche-Let:common:dev-SNAPSHOT'
     implementation 'com.github.Miche-Let:common-auth-webmvc:0.1.5'
-    implementation 'com.github.Miche-Let:common-auth-feign:0.1.1'
+    implementation 'com.github.Miche-Let:common-auth-feign:0.1.2'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-validation'

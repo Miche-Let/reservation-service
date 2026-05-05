@@ -13,6 +13,9 @@
 -- ============================================================
 
 -- 외래 키 의존 순서대로 삭제 (자식 → 부모)
+DELETE FROM reservation_service.p_reservations
+WHERE id IN ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'b2c3d4e5-f6a7-8901-bcde-f01234567891');
+
 DELETE FROM timeslot_service.p_time_slot
 WHERE restaurant_id = '2589a05e-db8f-4e62-bb3d-22ce85b750a3';
 
@@ -24,9 +27,6 @@ WHERE course_id = '7d376f47-8fb3-4be1-916f-4ee0e6ee8b3b';
 
 DELETE FROM restaurant_service.p_restaurant
 WHERE restaurant_id = '2589a05e-db8f-4e62-bb3d-22ce85b750a3';
-
-DELETE FROM reservation_db.p_reservations
-WHERE id IN ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'b2c3d4e5-f6a7-8901-bcde-f01234567891');
 
 -- owneruser01 삭제 (seed에서 다시 삽입됨)
 DELETE FROM user_service.p_users

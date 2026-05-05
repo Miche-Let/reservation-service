@@ -59,7 +59,7 @@ IntelliJ HTTP Client 기반 로컬 통합 테스트 가이드.
     
     spring:
       datasource:
-        url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432/${POSTGRES_DB:michelet_db}
+        url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:michelet_db}
         username: ${POSTGRES_USER:admin}
         password: ${POSTGRES_PASSWORD:admin}
         driver-class-name: org.postgresql.Driver
@@ -84,7 +84,7 @@ IntelliJ HTTP Client 기반 로컬 통합 테스트 가이드.
     
     spring:
       datasource:
-        url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432/${POSTGRES_DB:michelet_db}
+        url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:michelet_db}
         username: ${POSTGRES_USER:admin}
         password: ${POSTGRES_PASSWORD:admin}
         driver-class-name: org.postgresql.Driver

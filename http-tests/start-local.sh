@@ -6,13 +6,17 @@
 
 set -e
 
-# infra .env 로드
-ENV_FILE="$(dirname "$0")/infra/.env"
-if [ -f "$ENV_FILE" ]; then
-  export $(grep -v '^#' "$ENV_FILE" | xargs)
-fi
+# 스크립트 위치 기준으로 miche-let 루트 디렉터리 산출 (http-tests/../.. = miche-let/)
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
-ROOT="$(dirname "$0")"
+# infra .env 로드 (값에 공백이 포함될 수 있으므로 set -a 방식 사용)
+ENV_FILE="$ROOT/infra/.env"
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  set +a
+fi
 
 run_service() {
   local svc=$1

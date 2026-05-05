@@ -10,17 +10,17 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:create}
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         default_schema: reservation_service
         format_sql: true
         jdbc.time_zone: Asia/Seoul
+        order_inserts: true
+        order_updates: true
         jdbc:
           batch_size: 30
-          order_inserts: true
-          order_updates: true
     show-sql: false
     open-in-view: false
 

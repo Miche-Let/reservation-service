@@ -222,10 +222,10 @@ FROM
 ON CONFLICT ON CONSTRAINT uk_time_slot_restaurant_date_start DO NOTHING;
 
 -- ============================================================
--- 6. 예약 (reservation_db.p_reservations) — 시나리오 3 검증용 CONFIRMED 데이터
+-- 6. 예약 (reservation_service.p_reservations) — 시나리오 3 검증용 CONFIRMED 데이터
 --    owneruser01이 본인 식당에 예약한 데이터로 생성 (임시)
 -- ============================================================
-INSERT INTO reservation_db.p_reservations (
+INSERT INTO reservation_service.p_reservations (
     id,
     user_id,
     restaurant_id,
@@ -295,4 +295,4 @@ SELECT 'p_restaurant_course_menu',  COUNT(*) FROM restaurant_service.p_restauran
 UNION ALL
 SELECT 'p_time_slot',               COUNT(*) FROM timeslot_service.p_time_slot
 UNION ALL
-SELECT 'p_reservations',            COUNT(*) FROM reservation_db.p_reservations;
+SELECT 'p_reservations',            COUNT(*) FROM reservation_service.p_reservations;
