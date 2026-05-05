@@ -149,7 +149,22 @@ Content-Type: application/json
 # [플로우] 레스토랑 서비스가 체크인 가능 여부 확인 목적으로 호출 → CONFIRMED/COMPLETED 예약 존재 여부 + 예약 ID/날짜 반환
 # [데이터] userId + restaurantId 조합으로 유효 상태 예약 조회
 # [기대]   200 OK, exists=true, reservationId 및 reservationDate 포함
+< {%
+  (function() {
+    function b64url(str) {
+      return btoa(unescape(encodeURIComponent(str))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    }
+    const header = b64url(JSON.stringify({alg:"HS256",typ:"JWT"}));
+    const now = Math.floor(Date.now() / 1000);
+    const payload = b64url(JSON.stringify({iss:"http-test-client",sub:"internal-call",aud:["reservation-service"],iat:now,exp:now+60}));
+    const si = header + "." + payload;
+    const sig = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256(si, "michelet-internal-auth-secret-key-a8K2mQ9xLp4Vt7Rz1Nc"))
+      .replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    client.global.set("internal_token", si + "." + sig);
+  })();
+%}
 GET {{base_url}}/internal/reservations/verify?userId={{user_id}}&restaurantId={{restaurant_id}}
+X-Internal-Token: {{internal_token}}
 
 > {%
   client.test("200 OK", function() {
@@ -172,7 +187,22 @@ GET {{base_url}}/internal/reservations/verify?userId={{user_id}}&restaurantId={{
 # [플로우] 회원 서비스가 탈퇴 요청 전 진행 중인 예약 차단 목적으로 호출 → userId의 CONFIRMED 예약 존재 여부 반환
 # [데이터] 1번에서 생성한 예약이 CONFIRMED 상태이므로 exists=true
 # [기대]   200 OK, exists=true
+< {%
+  (function() {
+    function b64url(str) {
+      return btoa(unescape(encodeURIComponent(str))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    }
+    const header = b64url(JSON.stringify({alg:"HS256",typ:"JWT"}));
+    const now = Math.floor(Date.now() / 1000);
+    const payload = b64url(JSON.stringify({iss:"http-test-client",sub:"internal-call",aud:["reservation-service"],iat:now,exp:now+60}));
+    const si = header + "." + payload;
+    const sig = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256(si, "michelet-internal-auth-secret-key-a8K2mQ9xLp4Vt7Rz1Nc"))
+      .replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    client.global.set("internal_token", si + "." + sig);
+  })();
+%}
 GET {{base_url}}/internal/reservations/active?userId={{user_id}}
+X-Internal-Token: {{internal_token}}
 
 > {%
   client.test("200 OK", function() {
@@ -189,7 +219,22 @@ GET {{base_url}}/internal/reservations/active?userId={{user_id}}
 # [플로우] 5번 유효성 확인 후 레스토랑 서비스가 호출 → CONFIRMED → COMPLETED 상태 전환
 # [데이터] reservation_id + restaurantId (restaurantId 불일치 시 404)
 # [기대]   200 OK, status=COMPLETED, visitDate 및 checkedInAt 포함
+< {%
+  (function() {
+    function b64url(str) {
+      return btoa(unescape(encodeURIComponent(str))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    }
+    const header = b64url(JSON.stringify({alg:"HS256",typ:"JWT"}));
+    const now = Math.floor(Date.now() / 1000);
+    const payload = b64url(JSON.stringify({iss:"http-test-client",sub:"internal-call",aud:["reservation-service"],iat:now,exp:now+60}));
+    const si = header + "." + payload;
+    const sig = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256(si, "michelet-internal-auth-secret-key-a8K2mQ9xLp4Vt7Rz1Nc"))
+      .replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    client.global.set("internal_token", si + "." + sig);
+  })();
+%}
 PATCH {{base_url}}/internal/reservations/check-in
+X-Internal-Token: {{internal_token}}
 Content-Type: application/json
 
 {
@@ -218,7 +263,22 @@ Content-Type: application/json
 # [플로우] 커머스 서비스가 방문객 구매 자격 검증 목적으로 호출 → reservationId·userId·restaurantId 3개 모두 일치 + CONFIRMED 상태인지 확인
 # [데이터] 6번 체크인 완료 후 COMPLETED 상태가 된 예약으로 조회
 # [기대]   200 OK, exists=false (checkExists는 CONFIRMED 상태만 검사)
+< {%
+  (function() {
+    function b64url(str) {
+      return btoa(unescape(encodeURIComponent(str))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    }
+    const header = b64url(JSON.stringify({alg:"HS256",typ:"JWT"}));
+    const now = Math.floor(Date.now() / 1000);
+    const payload = b64url(JSON.stringify({iss:"http-test-client",sub:"internal-call",aud:["reservation-service"],iat:now,exp:now+60}));
+    const si = header + "." + payload;
+    const sig = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256(si, "michelet-internal-auth-secret-key-a8K2mQ9xLp4Vt7Rz1Nc"))
+      .replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    client.global.set("internal_token", si + "." + sig);
+  })();
+%}
 GET {{base_url}}/internal/reservations/exists?reservationId={{reservation_id}}&userId={{user_id}}&restaurantId={{restaurant_id}}
+X-Internal-Token: {{internal_token}}
 
 > {%
   client.test("200 OK", function() {
