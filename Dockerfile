@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jdk AS builder
+FROM eclipse-temurin:21-jdk AS builder
 WORKDIR /app
 
 COPY gradlew .
@@ -9,7 +9,7 @@ COPY src src
 RUN chmod +x ./gradlew
 RUN ./gradlew bootJar --no-daemon
 
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 RUN groupadd --system app && useradd --system --gid app app
 COPY --from=builder /app/build/libs/*.jar app.jar
