@@ -8,12 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(
-        name = "timeslot-service"
-        , url = "${feign.timeslot-service.url}"
-//        , configuration = InternalSecretFeignConfig.class
-        // todo : mvp 이후 InternalSecret 적용여부 판단
-)
+@FeignClient(name = "timeslot-service", url = "${feign.timeslot-service.url}")
 public interface TimeSlotClient {
 
     /**

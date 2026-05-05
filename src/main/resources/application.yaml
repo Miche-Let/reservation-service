@@ -42,7 +42,8 @@ spring:
 #      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:19090}/eureka/
 
 internal:
-  secret: ${INTERNAL_SECRET:dev-secret}
+  auth:
+    secret: ${INTERNAL_AUTH_SECRET:dev-secret}
 
 feign:
   timeslot-service:
