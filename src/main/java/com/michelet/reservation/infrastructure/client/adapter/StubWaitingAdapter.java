@@ -21,7 +21,7 @@ public class StubWaitingAdapter implements WaitingPort {
     }
 
     @Override
-    public void completeWaiting(UUID waitingId, UUID userId) {
-        log.debug("[STUB] completeWaiting skipped — waitingId={}, userId={}", waitingId, userId);
+    public void completeWaiting(UUID waitingId) {
+        log.debug("[STUB] completeWaiting skipped — waitingId={}", waitingId);
     }
 }
