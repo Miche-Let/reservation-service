@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -122,7 +123,7 @@ class ReservationCommandServiceTest {
             ReservationResult result = commandService.create(createCommand());
 
             assertThat(result).isNotNull();
-            verify(reservationRepository).save(any(Reservation.class));
+            verify(reservationRepository, times(2)).save(any(Reservation.class));
             verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2));
             verify(waitingPort).completeWaiting(eq(waitingId));
             verify(reservationEventPort).publishReservationCreated(
@@ -254,7 +255,7 @@ class ReservationCommandServiceTest {
         void CONFIRMED_아닌_상태에서_수정하면_예외를_던진다() {
             Reservation reservation = Reservation.reconstitute(
                     reservationId, userId, restaurantId, timeSlotId,
-                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_UNPAID,
+                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_PAID,
                     futureDate.minusDays(2), futureDate.minusDays(2),
                     LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
             );
@@ -305,7 +306,7 @@ class ReservationCommandServiceTest {
 
             commandService.cancel(CancelReservationCommand.of(reservationId, userId, "USER"));
 
-            assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED_UNPAID);
+            assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED_PAID);
             verify(timeSlotPort).incrementStock(timeSlotId, 2);
         }
 
@@ -461,7 +462,7 @@ class ReservationCommandServiceTest {
         void CONFIRMED_아닌_상태에서_체크인하면_예외를_던진다() {
             Reservation reservation = Reservation.reconstitute(
                     reservationId, userId, restaurantId, timeSlotId,
-                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_UNPAID,
+                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_PAID,
                     futureDate.minusDays(2), futureDate.minusDays(2),
                     LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
             );
