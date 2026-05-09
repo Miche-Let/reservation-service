@@ -1,6 +1,7 @@
 package com.michelet.reservation.application.reservation;
 
 import com.michelet.common.exception.BusinessException;
+import com.michelet.reservation.application.event.ReservationCreatedAppEvent;
 import com.michelet.reservation.application.reservation.command.CancelReservationCommand;
 import com.michelet.reservation.application.reservation.command.CheckInCommand;
 import com.michelet.reservation.application.reservation.command.CreateReservationCommand;
@@ -17,7 +18,6 @@ import com.michelet.reservation.domain.repository.ReservationCourseRepository;
 import com.michelet.reservation.domain.repository.ReservationRepository;
 import com.michelet.reservation.domain.vo.GuestCount;
 import com.michelet.reservation.domain.vo.Money;
-import com.michelet.reservation.application.port.ReservationEventPort;
 import com.michelet.reservation.application.port.TimeSlotPort;
 import com.michelet.reservation.application.port.WaitingPort;
 import java.time.LocalDate;
@@ -26,6 +26,7 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,7 +39,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     private final ReservationCourseRepository reservationCourseRepository;
     private final TimeSlotPort timeSlotPort;
     private final WaitingPort waitingPort;
-    private final ReservationEventPort reservationEventPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public ReservationResult create(CreateReservationCommand command) {
@@ -54,6 +55,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         LocalDateTime noshowDeadline = LocalDateTime.of(command.reservedDate(), command.slotStartTime())
                 .plusMinutes(30);
 
+        // WAITING 상태로 먼저 저장 — feign 호출 전 예약 레코드 확보
         Reservation reservation = Reservation.create(
                 command.userId(),
                 command.restaurantId(),
@@ -65,19 +67,26 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         Reservation saved = reservationRepository.save(reservation);
         List<ReservationCourse> savedCourses = saveCourses(saved.getId(), command.courses());
 
-        // DB 저장 완료 후 외부 호출 — 롤백 시 Feign 미호출 보장 (단, 커밋 전 호출이므로 분산 트랜잭션 리스크 존재)
+        // 타임슬롯 점유 및 대기열 완료 처리
+        // feign 성공 확인 후 CONFIRMED 전환 — 실패 시 트랜잭션 롤백으로 WAITING 레코드 제거
+        // TODO: 진정한 내결함성을 위해서는 WAITING 별도 커밋 + outbox 패턴 적용 필요 (다음 PR)
         timeSlotPort.decrementStock(saved.getTimeSlotId(), saved.getGuestCount().value());
         waitingPort.completeWaiting(tokenResult.waitingId());
-        reservationEventPort.publishReservationCreated(
-                saved.getId(),
-                saved.getUserId(),
-                saved.getRestaurantId(),
-                saved.getTimeSlotId(),
-                saved.getReservedDate(),
-                saved.getGuestCount().value()
-        );
 
-        return toResult(saved, savedCourses);
+        saved.confirm();
+        Reservation confirmed = reservationRepository.save(saved);
+
+        // DB 커밋 완료 후 Kafka 발행 — AFTER_COMMIT 훅을 통해 처리됨
+        eventPublisher.publishEvent(new ReservationCreatedAppEvent(
+                confirmed.getId(),
+                confirmed.getUserId(),
+                confirmed.getRestaurantId(),
+                confirmed.getTimeSlotId(),
+                confirmed.getReservedDate(),
+                confirmed.getGuestCount().value()
+        ));
+
+        return toResult(confirmed, savedCourses);
     }
 
     @Override

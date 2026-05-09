@@ -22,6 +22,14 @@ class ReservationTest {
     final LocalDate futureDate = LocalDate.now().plusDays(10);
     final LocalDateTime noshowDeadline = LocalDateTime.of(futureDate, LocalTime.of(19, 30));
 
+    Reservation waitingFuture() {
+        return Reservation.reconstitute(
+                UUID.randomUUID(), userId, restaurantId, timeSlotId,
+                futureDate, GuestCount.of(2), ReservationStatus.WAITING,
+                futureDate.minusDays(2), futureDate.minusDays(2), noshowDeadline, null
+        );
+    }
+
     Reservation confirmedFuture() {
         return Reservation.reconstitute(
                 UUID.randomUUID(), userId, restaurantId, timeSlotId,
@@ -44,11 +52,11 @@ class ReservationTest {
     class Create {
 
         @Test
-        void 정상_생성_시_CONFIRMED_상태로_생성된다() {
+        void 정상_생성_시_WAITING_상태로_생성된다() {
             Reservation r = Reservation.create(userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), noshowDeadline);
 
-            assertThat(r.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
+            assertThat(r.getStatus()).isEqualTo(ReservationStatus.WAITING);
             assertThat(r.getUserId()).isEqualTo(userId);
             assertThat(r.getCancelDeadline()).isEqualTo(futureDate.minusDays(2));
             assertThat(r.getModifyDeadline()).isEqualTo(futureDate.minusDays(2));
@@ -84,13 +92,55 @@ class ReservationTest {
     }
 
     @Nested
+    class Confirm {
+
+        @Test
+        void WAITING_상태에서_확정이_성공한다() {
+            Reservation r = waitingFuture();
+            r.confirm();
+            assertThat(r.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
+        }
+
+        @Test
+        void WAITING_아닌_상태에서_확정하면_예외를_던진다() {
+            Reservation r = confirmedFuture();
+
+            assertThatThrownBy(r::confirm)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));
+        }
+    }
+
+    @Nested
+    class CancelUnpaid {
+
+        @Test
+        void WAITING_상태에서_미결제_취소가_성공한다() {
+            Reservation r = waitingFuture();
+            r.cancelUnpaid();
+            assertThat(r.getStatus()).isEqualTo(ReservationStatus.CANCELLED_UNPAID);
+        }
+
+        @Test
+        void WAITING_아닌_상태에서_미결제_취소하면_예외를_던진다() {
+            Reservation r = confirmedFuture();
+
+            assertThatThrownBy(r::cancelUnpaid)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));
+        }
+    }
+
+    @Nested
     class Cancel {
 
         @Test
         void CONFIRMED_상태에서_취소가_성공한다() {
             Reservation r = confirmedFuture();
             r.cancel();
-            assertThat(r.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+            assertThat(r.getStatus()).isEqualTo(ReservationStatus.CANCELLED_PAID);
         }
 
         @Test

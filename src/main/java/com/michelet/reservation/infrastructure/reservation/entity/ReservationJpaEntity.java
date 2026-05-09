@@ -44,7 +44,7 @@ public class ReservationJpaEntity  extends BaseJpaEntity {
   private int guestCount;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "status", length = 20, nullable = false)
+  @Column(name = "status", length = 30, nullable = false)
   private ReservationStatus status;
 
   @Column(name = "cancel_deadline", nullable = false)

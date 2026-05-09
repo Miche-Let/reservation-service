@@ -50,7 +50,7 @@ public class Reservation {
     r.timeSlotId     = timeSlotId;
     r.reservedDate   = reservedDate;
     r.guestCount     = guestCount;
-    r.status         = ReservationStatus.CONFIRMED;
+    r.status         = ReservationStatus.WAITING;
     r.cancelDeadline = reservedDate.minusDays(2);
     r.modifyDeadline = reservedDate.minusDays(2);
     r.noshowDeadline = noshowDeadline; // 타임슬롯 데이터를 가져와서 설정함
@@ -86,12 +86,22 @@ public class Reservation {
     return r;
   }
 
+  public void confirm() {
+    validateTransition(ReservationStatus.WAITING);
+    this.status = ReservationStatus.CONFIRMED;
+  }
+
   public void cancel() {
     validateTransition(ReservationStatus.CONFIRMED);
     if (LocalDate.now().isAfter(cancelDeadline)) {
       throw new BusinessException(ReservationErrorCode.CANCEL_DEADLINE_EXCEEDED);
     }
-    this.status = ReservationStatus.CANCELLED;
+    this.status = ReservationStatus.CANCELLED_PAID;
+  }
+
+  public void cancelUnpaid() {
+    validateTransition(ReservationStatus.WAITING);
+    this.status = ReservationStatus.CANCELLED_UNPAID;
   }
 
   public void complete() {

@@ -8,11 +8,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.michelet.common.exception.BusinessException;
-import com.michelet.reservation.application.port.ReservationEventPort;
+import com.michelet.reservation.application.event.ReservationCreatedAppEvent;
 import com.michelet.reservation.application.port.TimeSlotPort;
 import com.michelet.reservation.application.port.WaitingPort;
 import com.michelet.reservation.application.port.WaitingTokenResult;
@@ -42,6 +43,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class ReservationCommandServiceTest {
@@ -55,7 +57,7 @@ class ReservationCommandServiceTest {
     @Mock
     WaitingPort waitingPort;
     @Mock
-    ReservationEventPort reservationEventPort;
+    ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     ReservationCommandServiceImpl commandService;
@@ -122,11 +124,10 @@ class ReservationCommandServiceTest {
             ReservationResult result = commandService.create(createCommand());
 
             assertThat(result).isNotNull();
-            verify(reservationRepository).save(any(Reservation.class));
+            verify(reservationRepository, times(2)).save(any(Reservation.class));
             verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2));
             verify(waitingPort).completeWaiting(eq(waitingId));
-            verify(reservationEventPort).publishReservationCreated(
-                    any(), eq(userId), eq(restaurantId), eq(timeSlotId), eq(futureDate), eq(2));
+            verify(eventPublisher).publishEvent(any(ReservationCreatedAppEvent.class));
         }
 
         @Test
@@ -254,7 +255,7 @@ class ReservationCommandServiceTest {
         void CONFIRMED_아닌_상태에서_수정하면_예외를_던진다() {
             Reservation reservation = Reservation.reconstitute(
                     reservationId, userId, restaurantId, timeSlotId,
-                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED,
+                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_PAID,
                     futureDate.minusDays(2), futureDate.minusDays(2),
                     LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
             );
@@ -305,7 +306,7 @@ class ReservationCommandServiceTest {
 
             commandService.cancel(CancelReservationCommand.of(reservationId, userId, "USER"));
 
-            assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+            assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED_PAID);
             verify(timeSlotPort).incrementStock(timeSlotId, 2);
         }
 
@@ -377,10 +378,10 @@ class ReservationCommandServiceTest {
         }
 
         @Test
-        void CANCELLED_예약_삭제_시_재고를_복구하지_않는다() {
+        void CANCELLED_UNPAID_예약_삭제_시_재고를_복구하지_않는다() {
             Reservation reservation = Reservation.reconstitute(
                     reservationId, userId, restaurantId, timeSlotId,
-                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED,
+                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_UNPAID,
                     futureDate.minusDays(2), futureDate.minusDays(2),
                     LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
             );
@@ -461,7 +462,7 @@ class ReservationCommandServiceTest {
         void CONFIRMED_아닌_상태에서_체크인하면_예외를_던진다() {
             Reservation reservation = Reservation.reconstitute(
                     reservationId, userId, restaurantId, timeSlotId,
-                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED,
+                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_PAID,
                     futureDate.minusDays(2), futureDate.minusDays(2),
                     LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
             );

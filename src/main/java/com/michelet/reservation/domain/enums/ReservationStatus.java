@@ -2,9 +2,13 @@ package com.michelet.reservation.domain.enums;
 
 public enum ReservationStatus {
 
+  WAITING,
+
   CONFIRMED,
 
-  CANCELLED,
+  CANCELLED_UNPAID,
+
+  CANCELLED_PAID,
 
   COMPLETED,
 
