@@ -254,7 +254,7 @@ class ReservationCommandServiceTest {
         void CONFIRMED_아닌_상태에서_수정하면_예외를_던진다() {
             Reservation reservation = Reservation.reconstitute(
                     reservationId, userId, restaurantId, timeSlotId,
-                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED,
+                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_UNPAID,
                     futureDate.minusDays(2), futureDate.minusDays(2),
                     LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
             );
@@ -305,7 +305,7 @@ class ReservationCommandServiceTest {
 
             commandService.cancel(CancelReservationCommand.of(reservationId, userId, "USER"));
 
-            assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+            assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED_UNPAID);
             verify(timeSlotPort).incrementStock(timeSlotId, 2);
         }
 
@@ -377,10 +377,10 @@ class ReservationCommandServiceTest {
         }
 
         @Test
-        void CANCELLED_예약_삭제_시_재고를_복구하지_않는다() {
+        void CANCELLED_UNPAID_예약_삭제_시_재고를_복구하지_않는다() {
             Reservation reservation = Reservation.reconstitute(
                     reservationId, userId, restaurantId, timeSlotId,
-                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED,
+                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_UNPAID,
                     futureDate.minusDays(2), futureDate.minusDays(2),
                     LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
             );
@@ -461,7 +461,7 @@ class ReservationCommandServiceTest {
         void CONFIRMED_아닌_상태에서_체크인하면_예외를_던진다() {
             Reservation reservation = Reservation.reconstitute(
                     reservationId, userId, restaurantId, timeSlotId,
-                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED,
+                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_UNPAID,
                     futureDate.minusDays(2), futureDate.minusDays(2),
                     LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
             );

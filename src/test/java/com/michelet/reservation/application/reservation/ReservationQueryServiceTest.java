@@ -208,7 +208,7 @@ class ReservationQueryServiceTest {
         void CONFIRMED_아닌_상태이면_exists_false() {
             Reservation cancelled = Reservation.reconstitute(
                     reservationId, userId, restaurantId, timeSlotId,
-                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED,
+                    futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_UNPAID,
                     futureDate.minusDays(2), futureDate.minusDays(2),
                     LocalDateTime.of(futureDate, LocalTime.of(19, 30)), null
             );

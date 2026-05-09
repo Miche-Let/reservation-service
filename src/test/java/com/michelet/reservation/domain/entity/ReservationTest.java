@@ -90,7 +90,7 @@ class ReservationTest {
         void CONFIRMED_상태에서_취소가_성공한다() {
             Reservation r = confirmedFuture();
             r.cancel();
-            assertThat(r.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+            assertThat(r.getStatus()).isEqualTo(ReservationStatus.CANCELLED_UNPAID);
         }
 
         @Test
