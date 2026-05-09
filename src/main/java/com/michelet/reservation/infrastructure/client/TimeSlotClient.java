@@ -8,7 +8,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(name = "timeslot-service", url = "${feign.timeslot-service.url}")
+@FeignClient(
+        name = "timeslot-service"
+)
 public interface TimeSlotClient {
 
     /**

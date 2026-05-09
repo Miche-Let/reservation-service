@@ -1,12 +1,20 @@
 spring:
   kafka:
     bootstrap-servers: localhost:9092
+  jpa:
+    hibernate:
+      ddl-auto: create
+
+internal:
+  secret: ${INTERNAL_AUTH_SECRET}
+  auth:
+    secret: ${INTERNAL_AUTH_SECRET}
 
 waiting:
-  stub: true
+  stub: false
 
 timeslot:
-  stub: true
+  stub: false
 
 kafka:
   stub: true

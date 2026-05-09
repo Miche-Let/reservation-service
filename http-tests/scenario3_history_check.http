@@ -1,0 +1,27 @@
+### Scenario 3: Reservation History Check (방문 이력 검증)
+### 사전 조건: seed_test_data.sql 실행 완료 (고정 예약 데이터 존재)
+### 이 테스트는 시드 데이터로 삽입된 고정 ID를 사용하여 검증합니다.
+### 활용 사례: 레스토랑 전용 콘텐츠(리뷰, 특별 메뉴 등)를 과거 방문자에게만 공개할 때
+### 내부 API 직접 호출 - reservation-service 직접 접근
+
+### [STEP 1] 방문 이력 검증 (Internal API)
+### 특정 유저가 특정 레스토랑에 예약한 이력이 있는지 확인
+### CONFIRMED/COMPLETED 상태 예약이 존재하면 exists=true 반환
+GET {{reservationServiceUrl}}/internal/reservations/verify?userId={{userId}}&restaurantId={{restaurantId}}
+
+> {%
+  client.test("예약 이력 조회 성공", function() {
+    client.assert(response.status === 200, "Expected 200 OK but got " + response.status);
+  });
+  if (response.body && response.body.data) {
+    var data = response.body.data;
+    client.log("예약 이력 존재: " + data.exists);
+    if (data.exists) {
+      client.log("예약 ID: " + data.reservationId);
+      client.log("예약 날짜: " + data.reservationDate);
+      client.log("→ 방문 이력 있음: 레스토랑 전용 콘텐츠 접근 허용");
+    } else {
+      client.log("→ 방문 이력 없음: 레스토랑 전용 콘텐츠 접근 차단");
+    }
+  }
+%}

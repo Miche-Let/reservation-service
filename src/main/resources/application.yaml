@@ -10,11 +10,17 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         default_schema: reservation_service
+        format_sql: true
+        jdbc.time_zone: Asia/Seoul
+        order_inserts: true
+        order_updates: true
+        jdbc:
+          batch_size: 30
     show-sql: false
     open-in-view: false
 
@@ -34,10 +40,11 @@ spring:
   cloud:
     discovery:
       enabled: true
+
 eureka:
   client:
     service-url:
-      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:19090}/eureka/
+      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8761}/eureka/
 
 internal:
   auth:

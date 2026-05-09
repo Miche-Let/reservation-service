@@ -1,0 +1,44 @@
+### Scenario 2: Consumer Check-in Flow
+### 사전 조건: Scenario 1 완료 (reservationId, userId, restaurantId가 env에 세팅된 상태)
+### 내부 API 직접 호출 (gateway 미통과) - reservation-service 직접 접근
+### 실제 서비스 간 통신은 FeignClient(lb://)를 통해 Eureka 기반으로 이루어짐
+###
+
+### [STEP 1] 예약 존재 여부 확인 (Internal API)
+### 특정 예약 ID + 유저 + 레스토랑 조합으로 존재 여부 검증
+GET {{reservationServiceUrl}}/internal/reservations/exists?reservationId={{reservationId}}&userId={{userId}}&restaurantId={{restaurantId}}
+
+> {%
+  client.test("예약 존재 여부 확인 성공", function() {
+    client.assert(response.status === 200, "Expected 200 OK but got " + response.status);
+    if (response.body && response.body.data) {
+        client.assert(response.body.data.exists === true, "예약 존재 확인 (exists=true)");
+    }
+  });
+%}
+
+###
+
+### [STEP 2] 체크인 처리 (Internal API)
+### 레스토랑 스태프가 고객 도착 시 호출
+PATCH {{reservationServiceUrl}}/internal/reservations/check-in
+Content-Type: application/json
+
+{
+  "reservationId": "{{reservationId}}",
+  "restaurantId": "{{restaurantId}}"
+}
+
+> {%
+  client.test("체크인 성공", function() {
+    client.assert(response.status === 200, "Expected 200 OK but got " + response.status);
+    if (response.body && response.body.data) {
+        client.assert(response.body.data.status === "COMPLETED", "예약 상태 COMPLETED 확인");
+        client.assert(response.body.data.checkedInAt !== null, "체크인 시각 기록 확인");
+    }
+  });
+  if (response.body && response.body.data) {
+    client.log("체크인 완료 - 상태: " + response.body.data.status);
+    client.log("체크인 시각: " + response.body.data.checkedInAt);
+  }
+%}
