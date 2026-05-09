@@ -54,6 +54,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         LocalDateTime noshowDeadline = LocalDateTime.of(command.reservedDate(), command.slotStartTime())
                 .plusMinutes(30);
 
+        // WAITING 상태로 먼저 저장 — feign 호출 전 예약 레코드 확보
         Reservation reservation = Reservation.create(
                 command.userId(),
                 command.restaurantId(),
@@ -65,19 +66,25 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         Reservation saved = reservationRepository.save(reservation);
         List<ReservationCourse> savedCourses = saveCourses(saved.getId(), command.courses());
 
-        // DB 저장 완료 후 외부 호출 — 롤백 시 Feign 미호출 보장 (단, 커밋 전 호출이므로 분산 트랜잭션 리스크 존재)
+        // 타임슬롯 점유 및 대기열 완료 처리
+        // feign 성공 확인 후 CONFIRMED 전환 — 실패 시 트랜잭션 롤백으로 WAITING 레코드 제거
+        // TODO: 진정한 내결함성을 위해서는 WAITING 별도 커밋 + outbox 패턴 적용 필요 (다음 PR)
         timeSlotPort.decrementStock(saved.getTimeSlotId(), saved.getGuestCount().value());
         waitingPort.completeWaiting(tokenResult.waitingId());
+
+        saved.confirm();
+        Reservation confirmed = reservationRepository.save(saved);
+
         reservationEventPort.publishReservationCreated(
-                saved.getId(),
-                saved.getUserId(),
-                saved.getRestaurantId(),
-                saved.getTimeSlotId(),
-                saved.getReservedDate(),
-                saved.getGuestCount().value()
+                confirmed.getId(),
+                confirmed.getUserId(),
+                confirmed.getRestaurantId(),
+                confirmed.getTimeSlotId(),
+                confirmed.getReservedDate(),
+                confirmed.getGuestCount().value()
         );
 
-        return toResult(saved, savedCourses);
+        return toResult(confirmed, savedCourses);
     }
 
     @Override
