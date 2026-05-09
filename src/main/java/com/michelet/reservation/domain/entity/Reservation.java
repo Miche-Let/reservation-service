@@ -91,7 +91,7 @@ public class Reservation {
     if (LocalDate.now().isAfter(cancelDeadline)) {
       throw new BusinessException(ReservationErrorCode.CANCEL_DEADLINE_EXCEEDED);
     }
-    this.status = ReservationStatus.CANCELLED;
+    this.status = ReservationStatus.CANCELLED_UNPAID;
   }
 
   public void complete() {
