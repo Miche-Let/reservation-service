@@ -1,6 +1,7 @@
 package com.michelet.reservation.application.reservation;
 
 import com.michelet.common.exception.BusinessException;
+import com.michelet.reservation.application.event.ReservationCreatedAppEvent;
 import com.michelet.reservation.application.reservation.command.CancelReservationCommand;
 import com.michelet.reservation.application.reservation.command.CheckInCommand;
 import com.michelet.reservation.application.reservation.command.CreateReservationCommand;
@@ -17,7 +18,6 @@ import com.michelet.reservation.domain.repository.ReservationCourseRepository;
 import com.michelet.reservation.domain.repository.ReservationRepository;
 import com.michelet.reservation.domain.vo.GuestCount;
 import com.michelet.reservation.domain.vo.Money;
-import com.michelet.reservation.application.port.ReservationEventPort;
 import com.michelet.reservation.application.port.TimeSlotPort;
 import com.michelet.reservation.application.port.WaitingPort;
 import java.time.LocalDate;
@@ -26,6 +26,7 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,7 +39,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     private final ReservationCourseRepository reservationCourseRepository;
     private final TimeSlotPort timeSlotPort;
     private final WaitingPort waitingPort;
-    private final ReservationEventPort reservationEventPort;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public ReservationResult create(CreateReservationCommand command) {
@@ -75,14 +76,15 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         saved.confirm();
         Reservation confirmed = reservationRepository.save(saved);
 
-        reservationEventPort.publishReservationCreated(
+        // DB 커밋 완료 후 Kafka 발행 — AFTER_COMMIT 훅을 통해 처리됨
+        eventPublisher.publishEvent(new ReservationCreatedAppEvent(
                 confirmed.getId(),
                 confirmed.getUserId(),
                 confirmed.getRestaurantId(),
                 confirmed.getTimeSlotId(),
                 confirmed.getReservedDate(),
                 confirmed.getGuestCount().value()
-        );
+        ));
 
         return toResult(confirmed, savedCourses);
     }

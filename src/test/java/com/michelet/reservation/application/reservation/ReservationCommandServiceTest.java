@@ -13,7 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.michelet.common.exception.BusinessException;
-import com.michelet.reservation.application.port.ReservationEventPort;
+import com.michelet.reservation.application.event.ReservationCreatedAppEvent;
 import com.michelet.reservation.application.port.TimeSlotPort;
 import com.michelet.reservation.application.port.WaitingPort;
 import com.michelet.reservation.application.port.WaitingTokenResult;
@@ -43,6 +43,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class ReservationCommandServiceTest {
@@ -56,7 +57,7 @@ class ReservationCommandServiceTest {
     @Mock
     WaitingPort waitingPort;
     @Mock
-    ReservationEventPort reservationEventPort;
+    ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     ReservationCommandServiceImpl commandService;
@@ -126,8 +127,7 @@ class ReservationCommandServiceTest {
             verify(reservationRepository, times(2)).save(any(Reservation.class));
             verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2));
             verify(waitingPort).completeWaiting(eq(waitingId));
-            verify(reservationEventPort).publishReservationCreated(
-                    any(), eq(userId), eq(restaurantId), eq(timeSlotId), eq(futureDate), eq(2));
+            verify(eventPublisher).publishEvent(any(ReservationCreatedAppEvent.class));
         }
 
         @Test
