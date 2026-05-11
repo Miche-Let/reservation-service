@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.michelet.common.exception.BusinessException;
 import com.michelet.reservation.domain.enums.ReservationStatus;
-import com.michelet.reservation.domain.enums.ReservationTransition;
 import com.michelet.reservation.domain.exception.ReservationErrorCode;
 import com.michelet.reservation.domain.vo.GuestCount;
 import java.time.LocalDate;
