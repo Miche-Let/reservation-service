@@ -24,6 +24,7 @@ public enum ReservationErrorCode implements ErrorCode {
   INVALID_TIME_SLOT_ID            ("RESERVATION_010", "타임슬롯 ID는 필수입니다.", 400),
   INVALID_RESERVED_DATE           ("RESERVATION_011", "예약일은 필수입니다.", 400),
   INVALID_GUEST_COUNT_NULL        ("RESERVATION_012", "인원수는 필수입니다.", 400),
+  INVALID_STATUS                  ("RESERVATION_015", "예약 상태 정보는 필수입니다.", 400),
 
   INVALID_GUEST_COUNT             ("RESERVATION_013", "인원수는 1명 이상 20명 이하여야 합니다.", 400),
   SLOT_START_TIME_REQUIRED        ("RESERVATION_014", "타임슬롯 변경 시 슬롯 시작 시각은 필수입니다.", 400),

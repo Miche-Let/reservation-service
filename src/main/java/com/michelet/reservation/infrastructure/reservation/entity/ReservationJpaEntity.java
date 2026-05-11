@@ -80,10 +80,6 @@ public class ReservationJpaEntity  extends BaseJpaEntity {
     return e;
   }
 
-  public void updateStatus(ReservationStatus status) {
-    this.status = status;
-  }
-
   public void updateSchedule(
       LocalDate reservedDate, int guestCount,
       LocalDate cancelDeadline, LocalDate modifyDeadline, LocalDateTime noshowDeadline

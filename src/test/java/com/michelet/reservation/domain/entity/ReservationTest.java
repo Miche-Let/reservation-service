@@ -210,6 +210,141 @@ class ReservationTest {
     }
 
     @Nested
+    class PolicyMethods {
+
+        @Test
+        void CONFIRMED_상태에서_requiresSlotReturn은_true다() {
+            assertThat(confirmedFuture().requiresSlotReturn()).isTrue();
+        }
+
+        @Test
+        void WAITING_상태에서_requiresSlotReturn은_false다() {
+            assertThat(waitingFuture().requiresSlotReturn()).isFalse();
+        }
+
+        @Test
+        void COMPLETED_상태에서_requiresSlotReturn은_false다() {
+            Reservation r = confirmedFuture();
+            r.complete();
+            assertThat(r.requiresSlotReturn()).isFalse();
+        }
+
+        @Test
+        void CANCELLED_PAID_상태에서_requiresSlotReturn은_false다() {
+            Reservation r = confirmedFuture();
+            r.cancel();
+            assertThat(r.requiresSlotReturn()).isFalse();
+        }
+
+        @Test
+        void CONFIRMED_deadline_이내에서_isCancellable은_true다() {
+            assertThat(confirmedFuture().isCancellable()).isTrue();
+        }
+
+        @Test
+        void CONFIRMED_deadline_초과_시_isCancellable은_false다() {
+            assertThat(confirmedDeadlinePassed().isCancellable()).isFalse();
+        }
+
+        @Test
+        void WAITING_상태에서_isCancellable은_false다() {
+            assertThat(waitingFuture().isCancellable()).isFalse();
+        }
+
+        @Test
+        void CONFIRMED_deadline_이내에서_isModifiable은_true다() {
+            assertThat(confirmedFuture().isModifiable()).isTrue();
+        }
+
+        @Test
+        void CONFIRMED_deadline_초과_시_isModifiable은_false다() {
+            assertThat(confirmedDeadlinePassed().isModifiable()).isFalse();
+        }
+
+        @Test
+        void WAITING_상태에서_isModifiable은_false다() {
+            assertThat(waitingFuture().isModifiable()).isFalse();
+        }
+
+        @Test
+        void CANCELLED_PAID_상태에서_requiresRefund는_true다() {
+            Reservation r = confirmedFuture();
+            r.cancel();
+            assertThat(r.requiresRefund()).isTrue();
+        }
+
+        @Test
+        void CONFIRMED_상태에서_requiresRefund는_false다() {
+            assertThat(confirmedFuture().requiresRefund()).isFalse();
+        }
+
+        @Test
+        void CANCELLED_UNPAID_상태에서_requiresRefund는_false다() {
+            Reservation r = waitingFuture();
+            r.cancelUnpaid();
+            assertThat(r.requiresRefund()).isFalse();
+        }
+    }
+
+    @Nested
+    class ForbiddenTransitions {
+
+        @Test
+        void COMPLETED_상태에서_confirm_호출_시_예외를_던진다() {
+            Reservation r = confirmedFuture();
+            r.complete();
+
+            assertThatThrownBy(r::confirm)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));
+        }
+
+        @Test
+        void NO_SHOW_상태에서_cancel_호출_시_예외를_던진다() {
+            Reservation r = confirmedFuture();
+            r.markNoShow();
+
+            assertThatThrownBy(r::cancel)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));
+        }
+
+        @Test
+        void CANCELLED_PAID_상태에서_complete_호출_시_예외를_던진다() {
+            Reservation r = confirmedFuture();
+            r.cancel();
+
+            assertThatThrownBy(r::complete)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));
+        }
+
+        @Test
+        void WAITING_상태에서_cancel_호출_시_예외를_던진다() {
+            Reservation r = waitingFuture();
+
+            assertThatThrownBy(r::cancel)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));
+        }
+
+        @Test
+        void CANCELLED_UNPAID_상태에서_cancelUnpaid_호출_시_예외를_던진다() {
+            Reservation r = waitingFuture();
+            r.cancelUnpaid();
+
+            assertThatThrownBy(r::cancelUnpaid)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));
+        }
+    }
+
+    @Nested
     class Modify {
 
         @Test

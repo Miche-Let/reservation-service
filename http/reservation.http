@@ -14,7 +14,6 @@
 #   CANCELLED_UNPAID — feign 실패 감지 시 자동 취소 / 미래 outbox 패턴 (WAITING → 슬롯 미점유)
 #   COMPLETED      — 체크인 완료
 #   NO_SHOW        — noshowDeadline 초과 미체크인
-#
 # 가정하는 전체 플로우
 #   1. 예약 등록            → WAITING 저장 → feign 점유 성공 → CONFIRMED 전환, reservation_id 저장
 #   2. 목록 조회 (전체)     → 생성된 예약이 목록에 포함됨을 확인
@@ -55,15 +54,15 @@ Content-Type: application/json
 }
 
 > {%
-  client.test("201 Created", function() {
-    client.assert(response.status === 201, "Expected 201, got " + response.status);
-  });
-  client.test("status CONFIRMED (WAITING→CONFIRMED 전환 완료)", function() {
-    client.assert(response.body.data.status === "CONFIRMED", "Expected CONFIRMED, got " + response.body.data.status);
-  });
-  if (response.status === 201) {
-    client.global.set("reservation_id", response.body.data.reservationId);
-  }
+    client.test("201 Created", function () {
+        client.assert(response.status === 201, "Expected 201, got " + response.status);
+    });
+    client.test("status CONFIRMED (WAITING→CONFIRMED 전환 완료)", function () {
+        client.assert(response.body.data.status === "CONFIRMED", "Expected CONFIRMED, got " + response.body.data.status);
+    });
+    if (response.status === 201) {
+        client.global.set("reservation_id", response.body.data.reservationId);
+    }
 %}
 
 ###
@@ -77,9 +76,9 @@ X-User-Id: {{user_id}}
 X-User-Role: USER
 
 > {%
-  client.test("200 OK", function() {
-    client.assert(response.status === 200, "Expected 200, got " + response.status);
-  });
+    client.test("200 OK", function () {
+        client.assert(response.status === 200, "Expected 200, got " + response.status);
+    });
 %}
 
 ###
@@ -94,9 +93,9 @@ X-User-Id: {{user_id}}
 X-User-Role: USER
 
 > {%
-  client.test("200 OK", function() {
-    client.assert(response.status === 200, "Expected 200, got " + response.status);
-  });
+    client.test("200 OK", function () {
+        client.assert(response.status === 200, "Expected 200, got " + response.status);
+    });
 %}
 
 ###
@@ -110,12 +109,12 @@ X-User-Id: {{user_id}}
 X-User-Role: USER
 
 > {%
-  client.test("200 OK", function() {
-    client.assert(response.status === 200, "Expected 200, got " + response.status);
-  });
-  client.test("status CONFIRMED", function() {
-    client.assert(response.body.data.status === "CONFIRMED", "Expected CONFIRMED, got " + response.body.data.status);
-  });
+    client.test("200 OK", function () {
+        client.assert(response.status === 200, "Expected 200, got " + response.status);
+    });
+    client.test("status CONFIRMED", function () {
+        client.assert(response.body.data.status === "CONFIRMED", "Expected CONFIRMED, got " + response.body.data.status);
+    });
 %}
 
 ###
@@ -134,9 +133,9 @@ Content-Type: application/json
 }
 
 > {%
-  client.test("200 OK", function() {
-    client.assert(response.status === 200, "Expected 200, got " + response.status);
-  });
+    client.test("200 OK", function () {
+        client.assert(response.status === 200, "Expected 200, got " + response.status);
+    });
 %}
 
 ###
@@ -156,9 +155,9 @@ Content-Type: application/json
 }
 
 > {%
-  client.test("200 OK", function() {
-    client.assert(response.status === 200, "Expected 200, got " + response.status);
-  });
+    client.test("200 OK", function () {
+        client.assert(response.status === 200, "Expected 200, got " + response.status);
+    });
 %}
 
 ###
@@ -168,35 +167,42 @@ Content-Type: application/json
 # [데이터] userId + restaurantId 조합으로 유효 상태 예약 조회
 # [기대]   200 OK, exists=true, reservationId 및 reservationDate 포함
 < {%
-  (function() {
-    function b64url(str) {
-      return btoa(unescape(encodeURIComponent(str))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
-    }
-    const header = b64url(JSON.stringify({alg:"HS256",typ:"JWT"}));
-    const now = Math.floor(Date.now() / 1000);
-    const payload = b64url(JSON.stringify({iss:"http-test-client",sub:"internal-call",aud:["reservation-service"],iat:now,exp:now+60}));
-    const si = header + "." + payload;
-    const sig = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256(si, "michelet-internal-auth-secret-key-a8K2mQ9xLp4Vt7Rz1Nc"))
-      .replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
-    client.global.set("internal_token", si + "." + sig);
-  })();
+    (function () {
+        function b64url(str) {
+            return btoa(unescape(encodeURIComponent(str))).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+        }
+
+        const header = b64url(JSON.stringify({alg: "HS256", typ: "JWT"}));
+        const now = Math.floor(Date.now() / 1000);
+        const payload = b64url(JSON.stringify({
+            iss: "http-test-client",
+            sub: "internal-call",
+            aud: ["reservation-service"],
+            iat: now,
+            exp: now + 60
+        }));
+        const si = header + "." + payload;
+        const sig = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256(si, "michelet-internal-auth-secret-key-a8K2mQ9xLp4Vt7Rz1Nc"))
+            .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+        client.global.set("internal_token", si + "." + sig);
+    })();
 %}
 GET {{base_url}}/internal/reservations/verify?userId={{user_id}}&restaurantId={{restaurant_id}}
 X-Internal-Token: {{internal_token}}
 
 > {%
-  client.test("200 OK", function() {
-    client.assert(response.status === 200, "Expected 200, got " + response.status);
-  });
-  client.test("exists true", function() {
-    client.assert(response.body.data.exists === true, "Expected exists=true");
-  });
-  client.test("reservationId 존재", function() {
-    client.assert(response.body.data.reservationId != null, "Expected reservationId");
-  });
-  client.test("reservationDate 존재", function() {
-    client.assert(response.body.data.reservationDate != null, "Expected reservationDate");
-  });
+    client.test("200 OK", function () {
+        client.assert(response.status === 200, "Expected 200, got " + response.status);
+    });
+    client.test("exists true", function () {
+        client.assert(response.body.data.exists === true, "Expected exists=true");
+    });
+    client.test("reservationId 존재", function () {
+        client.assert(response.body.data.reservationId != null, "Expected reservationId");
+    });
+    client.test("reservationDate 존재", function () {
+        client.assert(response.body.data.reservationDate != null, "Expected reservationDate");
+    });
 %}
 
 ###
@@ -206,29 +212,36 @@ X-Internal-Token: {{internal_token}}
 # [데이터] 1번에서 생성한 예약이 CONFIRMED 상태이므로 exists=true
 # [기대]   200 OK, exists=true
 < {%
-  (function() {
-    function b64url(str) {
-      return btoa(unescape(encodeURIComponent(str))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
-    }
-    const header = b64url(JSON.stringify({alg:"HS256",typ:"JWT"}));
-    const now = Math.floor(Date.now() / 1000);
-    const payload = b64url(JSON.stringify({iss:"http-test-client",sub:"internal-call",aud:["reservation-service"],iat:now,exp:now+60}));
-    const si = header + "." + payload;
-    const sig = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256(si, "michelet-internal-auth-secret-key-a8K2mQ9xLp4Vt7Rz1Nc"))
-      .replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
-    client.global.set("internal_token", si + "." + sig);
-  })();
+    (function () {
+        function b64url(str) {
+            return btoa(unescape(encodeURIComponent(str))).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+        }
+
+        const header = b64url(JSON.stringify({alg: "HS256", typ: "JWT"}));
+        const now = Math.floor(Date.now() / 1000);
+        const payload = b64url(JSON.stringify({
+            iss: "http-test-client",
+            sub: "internal-call",
+            aud: ["reservation-service"],
+            iat: now,
+            exp: now + 60
+        }));
+        const si = header + "." + payload;
+        const sig = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256(si, "michelet-internal-auth-secret-key-a8K2mQ9xLp4Vt7Rz1Nc"))
+            .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+        client.global.set("internal_token", si + "." + sig);
+    })();
 %}
 GET {{base_url}}/internal/reservations/active?userId={{user_id}}
 X-Internal-Token: {{internal_token}}
 
 > {%
-  client.test("200 OK", function() {
-    client.assert(response.status === 200, "Expected 200, got " + response.status);
-  });
-  client.test("exists true (체크인 전 CONFIRMED)", function() {
-    client.assert(response.body.data.exists === true, "Expected exists=true");
-  });
+    client.test("200 OK", function () {
+        client.assert(response.status === 200, "Expected 200, got " + response.status);
+    });
+    client.test("exists true (체크인 전 CONFIRMED)", function () {
+        client.assert(response.body.data.exists === true, "Expected exists=true");
+    });
 %}
 
 ###
@@ -238,18 +251,25 @@ X-Internal-Token: {{internal_token}}
 # [데이터] reservation_id + restaurantId (restaurantId 불일치 시 404)
 # [기대]   200 OK, status=COMPLETED, checkedInAt 포함
 < {%
-  (function() {
-    function b64url(str) {
-      return btoa(unescape(encodeURIComponent(str))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
-    }
-    const header = b64url(JSON.stringify({alg:"HS256",typ:"JWT"}));
-    const now = Math.floor(Date.now() / 1000);
-    const payload = b64url(JSON.stringify({iss:"http-test-client",sub:"internal-call",aud:["reservation-service"],iat:now,exp:now+60}));
-    const si = header + "." + payload;
-    const sig = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256(si, "michelet-internal-auth-secret-key-a8K2mQ9xLp4Vt7Rz1Nc"))
-      .replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
-    client.global.set("internal_token", si + "." + sig);
-  })();
+    (function () {
+        function b64url(str) {
+            return btoa(unescape(encodeURIComponent(str))).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+        }
+
+        const header = b64url(JSON.stringify({alg: "HS256", typ: "JWT"}));
+        const now = Math.floor(Date.now() / 1000);
+        const payload = b64url(JSON.stringify({
+            iss: "http-test-client",
+            sub: "internal-call",
+            aud: ["reservation-service"],
+            iat: now,
+            exp: now + 60
+        }));
+        const si = header + "." + payload;
+        const sig = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256(si, "michelet-internal-auth-secret-key-a8K2mQ9xLp4Vt7Rz1Nc"))
+            .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+        client.global.set("internal_token", si + "." + sig);
+    })();
 %}
 PATCH {{base_url}}/internal/reservations/check-in
 X-Internal-Token: {{internal_token}}
@@ -261,15 +281,15 @@ Content-Type: application/json
 }
 
 > {%
-  client.test("200 OK", function() {
-    client.assert(response.status === 200, "Expected 200, got " + response.status);
-  });
-  client.test("status COMPLETED", function() {
-    client.assert(response.body.data.status === "COMPLETED", "Expected COMPLETED");
-  });
-  client.test("checkedInAt 존재", function() {
-    client.assert(response.body.data.checkedInAt != null, "Expected checkedInAt");
-  });
+    client.test("200 OK", function () {
+        client.assert(response.status === 200, "Expected 200, got " + response.status);
+    });
+    client.test("status COMPLETED", function () {
+        client.assert(response.body.data.status === "COMPLETED", "Expected COMPLETED");
+    });
+    client.test("checkedInAt 존재", function () {
+        client.assert(response.body.data.checkedInAt != null, "Expected checkedInAt");
+    });
 %}
 
 ###
@@ -279,29 +299,37 @@ Content-Type: application/json
 # [데이터] 6번 체크인 완료 후 COMPLETED 상태가 된 예약으로 조회
 # [기대]   200 OK, exists=false (checkExists는 CONFIRMED 상태만 검사 — 체크인 후 COMPLETED이므로 false)
 < {%
-  (function() {
-    function b64url(str) {
-      return btoa(unescape(encodeURIComponent(str))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
-    }
-    const header = b64url(JSON.stringify({alg:"HS256",typ:"JWT"}));
-    const now = Math.floor(Date.now() / 1000);
-    const payload = b64url(JSON.stringify({iss:"http-test-client",sub:"internal-call",aud:["reservation-service"],iat:now,exp:now+60}));
-    const si = header + "." + payload;
-    const sig = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256(si, "michelet-internal-auth-secret-key-a8K2mQ9xLp4Vt7Rz1Nc"))
-      .replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
-    client.global.set("internal_token", si + "." + sig);
-  })();
+    (function () {
+        function b64url(str) {
+            return btoa(unescape(encodeURIComponent(str))).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+        }
+
+        const header = b64url(JSON.stringify({alg: "HS256", typ: "JWT"}));
+        const now = Math.floor(Date.now() / 1000);
+        const payload = b64url(JSON.stringify({
+            iss: "http-test-client",
+            sub: "internal-call",
+            aud: ["reservation-service"],
+            iat: now,
+            exp: now + 60
+        }));
+        const si = header + "." + payload;
+        const sig = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256(si, "michelet-internal-auth-secret-key-a8K2mQ9xLp4Vt7Rz1Nc"))
+            .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+        client.global.set("internal_token", si + "." + sig);
+    })();
 %}
-GET {{base_url}}/internal/reservations/exists?reservationId={{reservation_id}}&userId={{user_id}}&restaurantId={{restaurant_id}}
+GET {{base_url}}/internal/reservations/exists?reservationId={{reservation_id}}&userId={{user_id}}&
+    restaurantId={{restaurant_id}}
 X-Internal-Token: {{internal_token}}
 
 > {%
-  client.test("200 OK", function() {
-    client.assert(response.status === 200, "Expected 200, got " + response.status);
-  });
-  client.test("exists false (COMPLETED 상태는 CONFIRMED 아님)", function() {
-    client.assert(response.body.data.exists === false, "Expected exists=false");
-  });
+    client.test("200 OK", function () {
+        client.assert(response.status === 200, "Expected 200, got " + response.status);
+    });
+    client.test("exists false (COMPLETED 상태는 CONFIRMED 아님)", function () {
+        client.assert(response.body.data.exists === false, "Expected exists=false");
+    });
 %}
 
 ###
@@ -317,12 +345,12 @@ X-User-Id: {{user_id}}
 X-User-Role: USER
 
 > {%
-  client.test("200 OK", function() {
-    client.assert(response.status === 200, "Expected 200, got " + response.status);
-  });
-  client.test("status COMPLETED (체크인 완료)", function() {
-    client.assert(response.body.data.status === "COMPLETED", "Expected status=COMPLETED");
-  });
+    client.test("200 OK", function () {
+        client.assert(response.status === 200, "Expected 200, got " + response.status);
+    });
+    client.test("status COMPLETED (체크인 완료)", function () {
+        client.assert(response.body.data.status === "COMPLETED", "Expected status=COMPLETED");
+    });
 %}
 
 ###
@@ -337,9 +365,9 @@ X-User-Id: {{user_id}}
 X-User-Role: USER
 
 > {%
-  client.test("200 OK", function() {
-    client.assert(response.status === 200, "Expected 200, got " + response.status);
-  });
+    client.test("200 OK", function () {
+        client.assert(response.status === 200, "Expected 200, got " + response.status);
+    });
 %}
 
 ###
