@@ -116,6 +116,24 @@ public class Reservation {
     this.status = ReservationStatus.NO_SHOW;
   }
 
+  public boolean requiresSlotReturn() {
+    return this.status == ReservationStatus.CONFIRMED;
+  }
+
+  public boolean isCancellable() {
+    return this.status == ReservationStatus.CONFIRMED
+        && !LocalDate.now().isAfter(cancelDeadline);
+  }
+
+  public boolean isModifiable() {
+    return this.status == ReservationStatus.CONFIRMED
+        && !LocalDate.now().isAfter(modifyDeadline);
+  }
+
+  public boolean requiresRefund() {
+    return this.status == ReservationStatus.CANCELLED_PAID;
+  }
+
   public void modify(
       UUID newTimeSlotId,
       LocalDate newReservedDate,

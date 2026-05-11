@@ -139,7 +139,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     public void delete(DeleteReservationCommand command) {
         Reservation reservation = findAndVerifyOwnership(command.reservationId(), command.userId(), command.userRole());
         reservationRepository.delete(reservation.getId(), command.userId());
-        if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
+        if (reservation.requiresSlotReturn()) {
             timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
         }
     }
