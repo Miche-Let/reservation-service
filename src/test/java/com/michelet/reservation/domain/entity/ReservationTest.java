@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.michelet.common.exception.BusinessException;
 import com.michelet.reservation.domain.enums.ReservationStatus;
+import com.michelet.reservation.domain.enums.ReservationTransition;
 import com.michelet.reservation.domain.exception.ReservationErrorCode;
 import com.michelet.reservation.domain.vo.GuestCount;
 import java.time.LocalDate;
@@ -203,6 +204,64 @@ class ReservationTest {
             r.cancel();
 
             assertThatThrownBy(r::markNoShow)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));
+        }
+    }
+
+    @Nested
+    class ForbiddenTransitions {
+
+        @Test
+        void COMPLETED_상태에서_confirm_호출_시_예외를_던진다() {
+            Reservation r = confirmedFuture();
+            r.complete();
+
+            assertThatThrownBy(r::confirm)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));
+        }
+
+        @Test
+        void NO_SHOW_상태에서_cancel_호출_시_예외를_던진다() {
+            Reservation r = confirmedFuture();
+            r.markNoShow();
+
+            assertThatThrownBy(r::cancel)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));
+        }
+
+        @Test
+        void CANCELLED_PAID_상태에서_complete_호출_시_예외를_던진다() {
+            Reservation r = confirmedFuture();
+            r.cancel();
+
+            assertThatThrownBy(r::complete)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));
+        }
+
+        @Test
+        void WAITING_상태에서_cancel_호출_시_예외를_던진다() {
+            Reservation r = waitingFuture();
+
+            assertThatThrownBy(r::cancel)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));
+        }
+
+        @Test
+        void CANCELLED_UNPAID_상태에서_cancelUnpaid_호출_시_예외를_던진다() {
+            Reservation r = waitingFuture();
+            r.cancelUnpaid();
+
+            assertThatThrownBy(r::cancelUnpaid)
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));

@@ -2,6 +2,7 @@ package com.michelet.reservation.domain.entity;
 
 import com.michelet.common.exception.BusinessException;
 import com.michelet.reservation.domain.enums.ReservationStatus;
+import com.michelet.reservation.domain.enums.ReservationTransition;
 import com.michelet.reservation.domain.exception.ReservationErrorCode;
 import com.michelet.reservation.domain.vo.GuestCount;
 import lombok.AccessLevel;
@@ -87,12 +88,12 @@ public class Reservation {
   }
 
   public void confirm() {
-    validateTransition(ReservationStatus.WAITING);
+    validateTransition(ReservationStatus.CONFIRMED);
     this.status = ReservationStatus.CONFIRMED;
   }
 
   public void cancel() {
-    validateTransition(ReservationStatus.CONFIRMED);
+    validateTransition(ReservationStatus.CANCELLED_PAID);
     if (LocalDate.now().isAfter(cancelDeadline)) {
       throw new BusinessException(ReservationErrorCode.CANCEL_DEADLINE_EXCEEDED);
     }
@@ -100,18 +101,18 @@ public class Reservation {
   }
 
   public void cancelUnpaid() {
-    validateTransition(ReservationStatus.WAITING);
+    validateTransition(ReservationStatus.CANCELLED_UNPAID);
     this.status = ReservationStatus.CANCELLED_UNPAID;
   }
 
   public void complete() {
-    validateTransition(ReservationStatus.CONFIRMED);
+    validateTransition(ReservationStatus.COMPLETED);
     this.status = ReservationStatus.COMPLETED;
     this.checkedInAt = LocalDateTime.now();
   }
 
   public void markNoShow() {
-    validateTransition(ReservationStatus.CONFIRMED);
+    validateTransition(ReservationStatus.NO_SHOW);
     this.status = ReservationStatus.NO_SHOW;
   }
 
@@ -121,7 +122,7 @@ public class Reservation {
       GuestCount newGuestCount,
       LocalDateTime newNoshowDeadline
   ) {
-    validateTransition(ReservationStatus.CONFIRMED);
+    requireStatus(ReservationStatus.CONFIRMED);
     if (LocalDate.now().isAfter(modifyDeadline)) {
       throw new BusinessException(ReservationErrorCode.MODIFY_DEADLINE_EXCEEDED);
     }
@@ -133,7 +134,13 @@ public class Reservation {
     this.noshowDeadline = newNoshowDeadline;
   }
 
-  private void validateTransition(ReservationStatus required) {
+  private void validateTransition(ReservationStatus to) {
+    if (!ReservationTransition.isAllowed(this.status, to)) {
+      throw new BusinessException(ReservationErrorCode.INVALID_STATUS_TRANSITION);
+    }
+  }
+
+  private void requireStatus(ReservationStatus required) {
     if (this.status != required) {
       throw new BusinessException(ReservationErrorCode.INVALID_STATUS_TRANSITION);
     }
