@@ -10,7 +10,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:create}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -23,25 +23,25 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 
-  kafka:
-    bootstrap-servers: ${KAFKA_HOST}:${KAFKA_PORT}
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      properties:
-        spring.json.add.type.headers: false
+#  kafka:
+#    bootstrap-servers: ${KAFKA_HOST}:${KAFKA_PORT}
+#    producer:
+#      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+#      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+#      properties:
+#        spring.json.add.type.headers: false
 
-  cloud:
-    discovery:
-      enabled: true
-eureka:
-  client:
-    service-url:
-      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:19090}/eureka/
-
+#  cloud:
+#    discovery:
+#      enabled: true
+#eureka:
+#  client:
+#    service-url:
+#      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:19090}/eureka/
+#
 internal:
   auth:
-    secret: ${INTERNAL_AUTH_SECRET}
+    secret: ${INTERNAL_AUTH_SECRET:michelet-internal-auth-secret-key-a8K2mQ9xLp4Vt7Rz1Nc}
 
 feign:
   timeslot-service:
