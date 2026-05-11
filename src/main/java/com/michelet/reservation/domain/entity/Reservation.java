@@ -2,8 +2,9 @@ package com.michelet.reservation.domain.entity;
 
 import com.michelet.common.exception.BusinessException;
 import com.michelet.reservation.domain.enums.ReservationStatus;
-import com.michelet.reservation.domain.enums.ReservationTransition;
 import com.michelet.reservation.domain.exception.ReservationErrorCode;
+import com.michelet.reservation.domain.state.ReservationState;
+import com.michelet.reservation.domain.state.ReservationStateFactory;
 import com.michelet.reservation.domain.vo.GuestCount;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -25,6 +26,7 @@ public class Reservation {
   private LocalDate reservedDate;
   private GuestCount guestCount;
   private ReservationStatus status;
+  private transient ReservationState state; // JPA 영속화 대상 아님
 
   private LocalDate cancelDeadline;
 
@@ -52,6 +54,7 @@ public class Reservation {
     r.reservedDate   = reservedDate;
     r.guestCount     = guestCount;
     r.status         = ReservationStatus.WAITING;
+    r.state          = ReservationStateFactory.from(ReservationStatus.WAITING);
     r.cancelDeadline = reservedDate.minusDays(2);
     r.modifyDeadline = reservedDate.minusDays(2);
     r.noshowDeadline = noshowDeadline; // 타임슬롯 데이터를 가져와서 설정함
@@ -71,7 +74,7 @@ public class Reservation {
       LocalDateTime noshowDeadline,
       LocalDateTime checkedInAt
   ) {
-    validateReconstituteInput(id,userId, restaurantId, timeSlotId, reservedDate, guestCount);
+    validateReconstituteInput(id, userId, restaurantId, timeSlotId, reservedDate, guestCount);
     Reservation r = new Reservation();
     r.id             = id;
     r.userId         = userId;
@@ -80,6 +83,7 @@ public class Reservation {
     r.reservedDate   = reservedDate;
     r.guestCount     = guestCount;
     r.status         = status;
+    r.state          = ReservationStateFactory.from(status);
     r.cancelDeadline = cancelDeadline;
     r.modifyDeadline = modifyDeadline;
     r.noshowDeadline = noshowDeadline;
@@ -88,50 +92,47 @@ public class Reservation {
   }
 
   public void confirm() {
-    validateTransition(ReservationStatus.CONFIRMED);
-    this.status = ReservationStatus.CONFIRMED;
+    this.status = state.confirm();
+    this.state  = ReservationStateFactory.from(this.status);
   }
 
   public void cancel() {
-    validateTransition(ReservationStatus.CANCELLED_PAID);
-    if (LocalDate.now().isAfter(cancelDeadline)) {
-      throw new BusinessException(ReservationErrorCode.CANCEL_DEADLINE_EXCEEDED);
-    }
-    this.status = ReservationStatus.CANCELLED_PAID;
+    this.status = state.cancel(this.cancelDeadline);
+    this.state  = ReservationStateFactory.from(this.status);
   }
 
   public void cancelUnpaid() {
-    validateTransition(ReservationStatus.CANCELLED_UNPAID);
-    this.status = ReservationStatus.CANCELLED_UNPAID;
+    this.status = state.cancelUnpaid();
+    this.state  = ReservationStateFactory.from(this.status);
   }
 
   public void complete() {
-    validateTransition(ReservationStatus.COMPLETED);
-    this.status = ReservationStatus.COMPLETED;
+    this.status      = state.complete();
+    this.state       = ReservationStateFactory.from(this.status);
     this.checkedInAt = LocalDateTime.now();
   }
 
   public void markNoShow() {
-    validateTransition(ReservationStatus.NO_SHOW);
-    this.status = ReservationStatus.NO_SHOW;
+    this.status = state.markNoShow();
+    this.state  = ReservationStateFactory.from(this.status);
   }
 
   public boolean requiresSlotReturn() {
-    return this.status == ReservationStatus.CONFIRMED;
+    return state.requiresSlotReturn();
   }
 
   public boolean isCancellable() {
-    return this.status == ReservationStatus.CONFIRMED
+    return state.status() == ReservationStatus.CONFIRMED
         && !LocalDate.now().isAfter(cancelDeadline);
   }
 
   public boolean isModifiable() {
-    return this.status == ReservationStatus.CONFIRMED
+    return state.status() == ReservationStatus.CONFIRMED
         && !LocalDate.now().isAfter(modifyDeadline);
   }
 
   public boolean requiresRefund() {
-    return this.status == ReservationStatus.CANCELLED_PAID;
+    return state.requiresRefund();
   }
 
   public void modify(
@@ -140,7 +141,9 @@ public class Reservation {
       GuestCount newGuestCount,
       LocalDateTime newNoshowDeadline
   ) {
-    requireStatus(ReservationStatus.CONFIRMED);
+    if (state.status() != ReservationStatus.CONFIRMED) {
+      throw new BusinessException(ReservationErrorCode.INVALID_STATUS_TRANSITION);
+    }
     if (LocalDate.now().isAfter(modifyDeadline)) {
       throw new BusinessException(ReservationErrorCode.MODIFY_DEADLINE_EXCEEDED);
     }
@@ -150,18 +153,6 @@ public class Reservation {
     this.cancelDeadline = newReservedDate.minusDays(2);
     this.modifyDeadline = newReservedDate.minusDays(2);
     this.noshowDeadline = newNoshowDeadline;
-  }
-
-  private void validateTransition(ReservationStatus to) {
-    if (!ReservationTransition.isAllowed(this.status, to)) {
-      throw new BusinessException(ReservationErrorCode.INVALID_STATUS_TRANSITION);
-    }
-  }
-
-  private void requireStatus(ReservationStatus required) {
-    if (this.status != required) {
-      throw new BusinessException(ReservationErrorCode.INVALID_STATUS_TRANSITION);
-    }
   }
 
   private static void validateCreateInput(
