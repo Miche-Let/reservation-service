@@ -120,6 +120,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         LocalDateTime newNoshowDeadline = resolveNoshowDeadline(reservation, command.reservedDate(), command.slotStartTime(), newDate);
 
         boolean slotChanged = !newTimeSlotId.equals(originalTimeSlotId) || !newDate.equals(originalDate);
+        boolean guestCountChanged = newGuestCount != originalGuestCount;
+
         if (slotChanged) {
             // timeSlotId가 바뀌면 새 슬롯의 시작 시각이 달라질 수 있으므로 slotStartTime 필수
             if (!newTimeSlotId.equals(originalTimeSlotId) && command.slotStartTime() == null) {
@@ -133,15 +135,27 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         List<ReservationCourse> courses = updateCourses(saved.getId(), command.courses());
 
         if (slotChanged) {
-            // 신규 슬롯 차감 먼저 확인 — 실패 시 원래 슬롯 복구 없이 트랜잭션 롤백
+            // 슬롯 변경: 새 슬롯에 새 인원 전체 차감 확인 후 원래 슬롯 복구
             try {
                 timeSlotPort.decrementStock(newTimeSlotId, newGuestCount, command.reservationId());
             } catch (ExternalCallFailedException e) {
                 log.error("[modify] timeslot-service 호출 실패 — 예약 변경 롤백 (reservationId={})", command.reservationId(), e);
                 throw new BusinessException(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE);
             }
-            // 신규 슬롯 차감 성공 확인 후 원래 슬롯 복구
             timeSlotPort.incrementStock(originalTimeSlotId, originalGuestCount);
+        } else if (guestCountChanged) {
+            // 동일 슬롯에서 인원만 변경: delta(newGuestCount - originalGuestCount)만 처리
+            int delta = newGuestCount - originalGuestCount;
+            if (delta > 0) {
+                try {
+                    timeSlotPort.decrementStock(newTimeSlotId, delta, command.reservationId());
+                } catch (ExternalCallFailedException e) {
+                    log.error("[modify] 인원 증가 차감 실패 — 예약 변경 롤백 (reservationId={})", command.reservationId(), e);
+                    throw new BusinessException(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE);
+                }
+            } else {
+                timeSlotPort.incrementStock(originalTimeSlotId, -delta);
+            }
         }
 
         return toResult(saved, courses);
