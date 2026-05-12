@@ -26,14 +26,11 @@ public class ReservationExceptionHandler {
         );
     }
 
-    /**
-     * modify() 등에서 timeslot-service 연결 실패 시 → 503
-     * create()는 서비스 내에서 catch하여 WAITING 반환하므로 이 핸들러에 도달하지 않는다.
-     */
+    /** 외부 연동 실패 예외가 컨트롤러 계층까지 전파된 경우 503(Service Unavailable)을 반환한다. */
     @ExceptionHandler(ExternalCallFailedException.class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
     public ApiResponse<Void> handleExternalCallFailed(ExternalCallFailedException e) {
-        log.error("[external] 외부 서비스 연결 실패 — 일시적 장애: {}", e.getMessage());
+        log.error("[external] 외부 서비스 연결 실패 — 일시적 장애: {}", e.getMessage(), e);
         return ApiResponse.fail(
                 ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE.getCode(),
                 ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE.getMessage()

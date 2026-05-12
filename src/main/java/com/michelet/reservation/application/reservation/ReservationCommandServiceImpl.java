@@ -133,15 +133,15 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         List<ReservationCourse> courses = updateCourses(saved.getId(), command.courses());
 
         if (slotChanged) {
-            timeSlotPort.incrementStock(originalTimeSlotId, originalGuestCount);
+            // 신규 슬롯 차감 먼저 확인 — 실패 시 원래 슬롯 복구 없이 트랜잭션 롤백
             try {
                 timeSlotPort.decrementStock(newTimeSlotId, newGuestCount, command.reservationId());
             } catch (ExternalCallFailedException e) {
-                // 신규 슬롯 차감 실패 → 트랜잭션 롤백으로 예약 변경 취소
-                // 원래 슬롯 복구(incrementStock)는 현재 미구현이므로 운영자 확인 필요
                 log.error("[modify] timeslot-service 호출 실패 — 예약 변경 롤백 (reservationId={})", command.reservationId(), e);
                 throw new BusinessException(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE);
             }
+            // 신규 슬롯 차감 성공 확인 후 원래 슬롯 복구
+            timeSlotPort.incrementStock(originalTimeSlotId, originalGuestCount);
         }
 
         return toResult(saved, courses);

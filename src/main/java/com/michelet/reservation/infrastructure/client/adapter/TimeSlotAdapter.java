@@ -22,7 +22,7 @@ public class TimeSlotAdapter implements TimeSlotPort {
 
     @Override
     public void decrementStock(UUID timeSlotId, int requiredCapacity, UUID reservationId) {
-        String idempotencyKey = "reservation:" + reservationId;
+        String idempotencyKey = "deduct:" + timeSlotId + ":" + reservationId;
         try {
             timeSlotClient.decrementStock(
                     timeSlotId, idempotencyKey, new TimeSlotDeductCapacityRequest(requiredCapacity));
@@ -32,10 +32,16 @@ public class TimeSlotAdapter implements TimeSlotPort {
                     timeSlotId, reservationId, e.getMessage());
             throw new ExternalCallFailedException("timeslot-service 연결 불안정", e);
         } catch (FeignException e) {
-            if (e.status() >= 400 && e.status() < 500) {
-                // 비즈니스 거부 (슬롯 부족, 슬롯 없음 등) — 차감 미처리 확정 → 롤백
-                log.warn("[timeslot] 슬롯 차감 거부 (4xx) — timeSlotId={}, status={}", timeSlotId, e.status());
+            if (e.status() == 409) {
+                // 명시적 비즈니스 거부(잔여 좌석 부족) — 차감 미처리 확정 → 롤백
+                log.warn("[timeslot] 슬롯 차감 거부 (409) — timeSlotId={}, reservationId={}", timeSlotId, reservationId);
                 throw new BusinessException(ReservationErrorCode.SLOT_NOT_AVAILABLE);
+            }
+            if (e.status() >= 400 && e.status() < 500) {
+                // 인증·인가·요청 오류 등 — 비즈니스 거부로 단정하지 않음 → 호출자가 503 처리
+                log.error("[timeslot] 클라이언트 오류 — timeSlotId={}, reservationId={}, status={}",
+                        timeSlotId, reservationId, e.status(), e);
+                throw new ExternalCallFailedException("timeslot-service 클라이언트 오류", e);
             }
             // 5xx 서버 오류 — 처리 여부 불확실 → 호출자가 WAITING 처리
             log.error("[timeslot] 서버 오류 — timeSlotId={}, reservationId={}, status={}",
