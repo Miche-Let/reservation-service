@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -14,6 +15,7 @@ import static org.mockito.Mockito.when;
 
 import com.michelet.common.exception.BusinessException;
 import com.michelet.reservation.application.event.ReservationCreatedAppEvent;
+import com.michelet.reservation.application.exception.ExternalCallFailedException;
 import com.michelet.reservation.application.port.TimeSlotPort;
 import com.michelet.reservation.application.port.WaitingPort;
 import com.michelet.reservation.application.port.WaitingTokenResult;
@@ -136,8 +138,9 @@ class ReservationCommandServiceTest {
             ReservationResult result = commandService.create(createCommand());
 
             assertThat(result).isNotNull();
+            assertThat(result.status()).isEqualTo(ReservationStatus.CONFIRMED);
             verify(reservationRepository, times(2)).save(any(Reservation.class));
-            verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2));
+            verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2), any(UUID.class));
             verify(waitingPort).completeWaiting(eq(waitingId));
             verify(eventPublisher).publishEvent(any(ReservationCreatedAppEvent.class));
         }
@@ -163,6 +166,62 @@ class ReservationCommandServiceTest {
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.DUPLICATE_RESERVATION.getCode()));
         }
+
+        @Test
+        void 슬롯_차감_타임아웃_시_예약이_WAITING_상태로_저장된다() {
+            doThrow(new ExternalCallFailedException("read timeout", new RuntimeException()))
+                    .when(timeSlotPort).decrementStock(any(), anyInt(), any());
+
+            ReservationResult result = commandService.create(createCommand());
+
+            assertThat(result.status()).isEqualTo(ReservationStatus.WAITING);
+            // WAITING save 1회만 — CONFIRMED 전환 save 없음
+            verify(reservationRepository, times(1)).save(any(Reservation.class));
+            verify(waitingPort, never()).completeWaiting(any());
+            verify(eventPublisher, never()).publishEvent(any());
+        }
+
+        @Test
+        void 슬롯_차감_네트워크_오류_시_예약이_WAITING_상태로_저장된다() {
+            doThrow(new ExternalCallFailedException("connection refused", new RuntimeException()))
+                    .when(timeSlotPort).decrementStock(any(), anyInt(), any());
+
+            ReservationResult result = commandService.create(createCommand());
+
+            assertThat(result.status()).isEqualTo(ReservationStatus.WAITING);
+            verify(reservationRepository, times(1)).save(any(Reservation.class));
+            verify(waitingPort, never()).completeWaiting(any());
+        }
+
+        @Test
+        void 슬롯_부족으로_차감_거부_시_BusinessException이_발생한다() {
+            // timeslot-service 4xx 응답 → adapter가 BusinessException으로 변환
+            doThrow(new BusinessException(ReservationErrorCode.SLOT_NOT_AVAILABLE))
+                    .when(timeSlotPort).decrementStock(any(), anyInt(), any());
+
+            assertThatThrownBy(() -> commandService.create(createCommand()))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.SLOT_NOT_AVAILABLE.getCode()));
+
+            // BusinessException 전파 → 트랜잭션 롤백 (WAITING save도 취소됨)
+            // 실제 롤백 검증은 통합 테스트에서 확인
+            verify(waitingPort, never()).completeWaiting(any());
+            verify(eventPublisher, never()).publishEvent(any());
+        }
+
+        @Test
+        void 대기열_완료_실패_시에도_예약이_CONFIRMED_상태로_저장된다() {
+            // 슬롯 차감 성공 이후 waitingPort 실패 → 예약은 정상 확정
+            doThrow(new RuntimeException("waiting-service unavailable"))
+                    .when(waitingPort).completeWaiting(any());
+
+            ReservationResult result = commandService.create(createCommand());
+
+            assertThat(result.status()).isEqualTo(ReservationStatus.CONFIRMED);
+            verify(reservationRepository, times(2)).save(any(Reservation.class));
+            verify(eventPublisher).publishEvent(any(ReservationCreatedAppEvent.class));
+        }
     }
 
     @Nested
@@ -180,7 +239,7 @@ class ReservationCommandServiceTest {
             ));
 
             verify(timeSlotPort).incrementStock(timeSlotId, 2);
-            verify(timeSlotPort).decrementStock(timeSlotId, 2);
+            verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2), any(UUID.class));
         }
 
         @Test
@@ -197,7 +256,7 @@ class ReservationCommandServiceTest {
             ));
 
             verify(timeSlotPort).incrementStock(timeSlotId, 2);
-            verify(timeSlotPort).decrementStock(newSlotId, 2);
+            verify(timeSlotPort).decrementStock(eq(newSlotId), eq(2), any(UUID.class));
         }
 
         @Test
@@ -225,7 +284,7 @@ class ReservationCommandServiceTest {
             ));
 
             verify(timeSlotPort, never()).incrementStock(any(), anyInt());
-            verify(timeSlotPort, never()).decrementStock(any(), anyInt());
+            verify(timeSlotPort, never()).decrementStock(any(), anyInt(), any());
         }
 
         @Test

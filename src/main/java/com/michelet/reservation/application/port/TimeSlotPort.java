@@ -3,6 +3,11 @@ package com.michelet.reservation.application.port;
 import java.util.UUID;
 
 public interface TimeSlotPort {
-    void decrementStock(UUID timeSlotId, int requiredCapacity);
+
+    /**
+     * @param reservationId 멱등성 키 — 네트워크 재전송 시 이중 차감 방지용 (X-Idempotency-Key 헤더로 전달)
+     */
+    void decrementStock(UUID timeSlotId, int requiredCapacity, UUID reservationId);
+
     void incrementStock(UUID timeSlotId, int requiredCapacity);
 }

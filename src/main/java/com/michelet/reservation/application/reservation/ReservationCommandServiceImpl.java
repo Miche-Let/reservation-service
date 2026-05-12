@@ -2,6 +2,7 @@ package com.michelet.reservation.application.reservation;
 
 import com.michelet.common.exception.BusinessException;
 import com.michelet.reservation.application.event.ReservationCreatedAppEvent;
+import com.michelet.reservation.application.exception.ExternalCallFailedException;
 import com.michelet.reservation.application.reservation.command.CancelReservationCommand;
 import com.michelet.reservation.application.reservation.command.CheckInCommand;
 import com.michelet.reservation.application.reservation.command.CreateReservationCommand;
@@ -26,10 +27,12 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -66,11 +69,24 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         Reservation saved = reservationRepository.save(reservation);
         List<ReservationCourse> savedCourses = saveCourses(saved.getId(), command.courses());
 
-        // 타임슬롯 점유 및 대기열 완료 처리
-        // feign 성공 확인 후 CONFIRMED 전환 — 실패 시 트랜잭션 롤백으로 WAITING 레코드 제거
-        // TODO: 진정한 내결함성을 위해서는 WAITING 별도 커밋 + outbox 패턴 적용 필요 (다음 PR)
-        timeSlotPort.decrementStock(saved.getTimeSlotId(), saved.getGuestCount().value());
-        waitingPort.completeWaiting(tokenResult.waitingId());
+        // Phase 1: 슬롯 차감 — 실패 시 WAITING 유지 (트랜잭션 커밋)
+        // 비즈니스 거부(슬롯 부족 등)는 BusinessException 전파 → 트랜잭션 롤백
+        // TODO: Outbox 패턴 도입 후 WAITING 예약 자동 재처리 스케줄러 구현 필요
+        try {
+            timeSlotPort.decrementStock(saved.getTimeSlotId(), saved.getGuestCount().value(), saved.getId());
+        } catch (ExternalCallFailedException e) {
+            log.warn("[create] timeslot-service 호출 실패 — 예약 WAITING 유지 (reservationId={})", saved.getId(), e);
+            return toResult(saved, savedCourses);
+        }
+
+        // Phase 2: 대기열 완료 — 슬롯 차감 성공 이후이므로 실패해도 예약 확정 진행
+        // 대기열 항목은 TTL 만료 또는 운영자 정리로 처리됨
+        // TODO: WaitingAdapter에도 ExternalCallFailedException 래핑 적용 필요
+        try {
+            waitingPort.completeWaiting(tokenResult.waitingId());
+        } catch (RuntimeException e) {
+            log.warn("[create] 대기열 완료 처리 실패 — 예약 확정 계속 진행 (waitingId={})", tokenResult.waitingId(), e);
+        }
 
         saved.confirm();
         Reservation confirmed = reservationRepository.save(saved);
@@ -104,6 +120,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         LocalDateTime newNoshowDeadline = resolveNoshowDeadline(reservation, command.reservedDate(), command.slotStartTime(), newDate);
 
         boolean slotChanged = !newTimeSlotId.equals(originalTimeSlotId) || !newDate.equals(originalDate);
+        boolean guestCountChanged = newGuestCount != originalGuestCount;
+
         if (slotChanged) {
             // timeSlotId가 바뀌면 새 슬롯의 시작 시각이 달라질 수 있으므로 slotStartTime 필수
             if (!newTimeSlotId.equals(originalTimeSlotId) && command.slotStartTime() == null) {
@@ -117,8 +135,27 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         List<ReservationCourse> courses = updateCourses(saved.getId(), command.courses());
 
         if (slotChanged) {
+            // 슬롯 변경: 새 슬롯에 새 인원 전체 차감 확인 후 원래 슬롯 복구
+            try {
+                timeSlotPort.decrementStock(newTimeSlotId, newGuestCount, command.reservationId());
+            } catch (ExternalCallFailedException e) {
+                log.error("[modify] timeslot-service 호출 실패 — 예약 변경 롤백 (reservationId={})", command.reservationId(), e);
+                throw new BusinessException(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE);
+            }
             timeSlotPort.incrementStock(originalTimeSlotId, originalGuestCount);
-            timeSlotPort.decrementStock(newTimeSlotId, newGuestCount);
+        } else if (guestCountChanged) {
+            // 동일 슬롯에서 인원만 변경: delta(newGuestCount - originalGuestCount)만 처리
+            int delta = newGuestCount - originalGuestCount;
+            if (delta > 0) {
+                try {
+                    timeSlotPort.decrementStock(newTimeSlotId, delta, command.reservationId());
+                } catch (ExternalCallFailedException e) {
+                    log.error("[modify] 인원 증가 차감 실패 — 예약 변경 롤백 (reservationId={})", command.reservationId(), e);
+                    throw new BusinessException(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE);
+                }
+            } else {
+                timeSlotPort.incrementStock(originalTimeSlotId, -delta);
+            }
         }
 
         return toResult(saved, courses);
