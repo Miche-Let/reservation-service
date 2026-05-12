@@ -44,6 +44,9 @@ public enum ReservationErrorCode implements ErrorCode {
   CHECK_IN_TOO_LATE               ("RESERVATION_017", "체크인 허용 시간이 지났습니다.", 400),
   CONCURRENT_UPDATE_CONFLICT      ("RESERVATION_018", "동시 수정 요청이 충돌하였습니다. 다시 시도해 주세요.", 409),
 
+  SLOT_NOT_AVAILABLE              ("RESERVATION_019", "슬롯 잔여 인원이 부족합니다.", 409),
+  TIMESLOT_SERVICE_UNAVAILABLE    ("RESERVATION_020", "타임슬롯 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.", 503),
+
   INVALID_WAITING_TOKEN           ("RESERVATION_301", "유효하지 않은 대기열 토큰입니다.", 403);
 
   private final String code;

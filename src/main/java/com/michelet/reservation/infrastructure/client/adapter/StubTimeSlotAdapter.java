@@ -15,8 +15,9 @@ import org.springframework.stereotype.Component;
 public class StubTimeSlotAdapter implements TimeSlotPort {
 
     @Override
-    public void decrementStock(UUID timeSlotId, int requiredCapacity) {
-        log.debug("[STUB] decrementStock skipped — timeSlotId={}, requiredCapacity={}", timeSlotId, requiredCapacity);
+    public void decrementStock(UUID timeSlotId, int requiredCapacity, UUID reservationId) {
+        log.debug("[STUB] decrementStock skipped — timeSlotId={}, requiredCapacity={}, reservationId={}",
+                timeSlotId, requiredCapacity, reservationId);
     }
 
     @Override

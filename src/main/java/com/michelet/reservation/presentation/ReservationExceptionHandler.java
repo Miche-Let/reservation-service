@@ -1,6 +1,7 @@
 package com.michelet.reservation.presentation;
 
 import com.michelet.common.response.ApiResponse;
+import com.michelet.reservation.application.exception.ExternalCallFailedException;
 import com.michelet.reservation.domain.exception.ReservationErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
@@ -22,6 +23,20 @@ public class ReservationExceptionHandler {
         return ApiResponse.fail(
                 ReservationErrorCode.CONCURRENT_UPDATE_CONFLICT.getCode(),
                 ReservationErrorCode.CONCURRENT_UPDATE_CONFLICT.getMessage()
+        );
+    }
+
+    /**
+     * modify() 등에서 timeslot-service 연결 실패 시 → 503
+     * create()는 서비스 내에서 catch하여 WAITING 반환하므로 이 핸들러에 도달하지 않는다.
+     */
+    @ExceptionHandler(ExternalCallFailedException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public ApiResponse<Void> handleExternalCallFailed(ExternalCallFailedException e) {
+        log.error("[external] 외부 서비스 연결 실패 — 일시적 장애: {}", e.getMessage());
+        return ApiResponse.fail(
+                ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE.getCode(),
+                ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE.getMessage()
         );
     }
 }
