@@ -61,8 +61,8 @@ public class ReservationJpaEntity extends BaseJpaEntity {
     private LocalDateTime checkedInAt;
 
     @Version
-    @Column(name = "version", nullable = false)
-    private Long version;
+    @Column(name = "version", columnDefinition = "bigint default 0")
+    private Long version = 0L;
 
     public static ReservationJpaEntity of(
             UUID id, UUID userId, UUID restaurantId, UUID timeSlotId,

@@ -112,7 +112,7 @@ public class Reservation {
         if (state.status() != ReservationStatus.CONFIRMED) {
             throw new BusinessException(ReservationErrorCode.INVALID_STATUS_TRANSITION);
         }
-        LocalDateTime windowStart = noshowDeadline.minusMinutes(60); // slotStart - 30min
+        LocalDateTime windowStart = noshowDeadline.minusMinutes(60); // noshowDeadline - 60min (= slotStart - 30min)
         if (now.isBefore(windowStart)) {
             throw new BusinessException(ReservationErrorCode.CHECK_IN_TOO_EARLY);
         }

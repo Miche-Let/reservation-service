@@ -16,12 +16,14 @@ import com.michelet.common.auth.core.enums.UserRole;
 import com.michelet.common.auth.webmvc.context.UserContextHolder;
 import com.michelet.common.exception.BusinessException;
 import com.michelet.common.exception.GlobalExceptionHandler;
+import com.michelet.reservation.presentation.ReservationExceptionHandler;
 import com.michelet.reservation.application.reservation.ReservationCommandService;
 import com.michelet.reservation.application.reservation.ReservationQueryService;
 import com.michelet.reservation.application.reservation.result.ReservationResult;
 import com.michelet.reservation.application.reservation.result.ReservationSummaryResult;
 import com.michelet.reservation.domain.enums.ReservationStatus;
 import com.michelet.reservation.domain.exception.ReservationErrorCode;
+import org.springframework.dao.OptimisticLockingFailureException;
 import com.michelet.reservation.presentation.reservation.dto.request.CreateReservationRequest;
 import com.michelet.reservation.presentation.reservation.dto.request.ModifyReservationRequest;
 import java.time.LocalDate;
@@ -42,7 +44,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(ReservationController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, ReservationExceptionHandler.class})
 class ReservationControllerTest {
 
     @Autowired
@@ -268,6 +270,22 @@ class ReservationControllerTest {
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value(ReservationErrorCode.MODIFY_DEADLINE_EXCEEDED.getCode()));
+        }
+
+        @Test
+        void 낙관적_잠금_충돌_시_409를_반환한다() throws Exception {
+            when(commandService.modify(any()))
+                    .thenThrow(new OptimisticLockingFailureException("concurrent modification"));
+
+            ModifyReservationRequest req = new ModifyReservationRequest(null, null, null, null, null);
+
+            mockMvc.perform(patch("/api/v1/reservations/{id}", reservationId)
+                            .header("X-User-Id", userId)
+                            .header("X-User-Role", "USER")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(req)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value(ReservationErrorCode.CONCURRENT_UPDATE_CONFLICT.getCode()));
         }
     }
 }
