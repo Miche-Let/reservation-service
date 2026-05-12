@@ -8,6 +8,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+import com.michelet.reservation.domain.entity.Reservation;
+import com.michelet.reservation.domain.vo.GuestCount;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -59,25 +62,42 @@ public class ReservationJpaEntity  extends BaseJpaEntity {
   @Column(name = "checked_in_at")
   private LocalDateTime checkedInAt;
 
+  @Version
+  @Column(name = "version", nullable = false)
+  private Long version;
+
   public static ReservationJpaEntity of(
       UUID id, UUID userId, UUID restaurantId, UUID timeSlotId,
       LocalDate reservedDate, int guestCount, ReservationStatus status,
-      LocalDate cancelDeadline, LocalDate modifyDeadline, LocalDateTime noshowDeadline,
-      LocalDateTime checkedInAt
+      LocalDate cancelDeadline, LocalDate modifyDeadline,
+      LocalDateTime noshowDeadline, LocalDateTime checkedInAt
   ) {
     ReservationJpaEntity e = new ReservationJpaEntity();
-    e.id             = id;
-    e.userId         = userId;
-    e.restaurantId   = restaurantId;
-    e.timeSlotId     = timeSlotId;
-    e.reservedDate   = reservedDate;
-    e.guestCount     = guestCount;
-    e.status         = status;
-    e.cancelDeadline = cancelDeadline;
-    e.modifyDeadline = modifyDeadline;
-    e.noshowDeadline = noshowDeadline;
-    e.checkedInAt    = checkedInAt;
+    e.id              = id;
+    e.userId          = userId;
+    e.restaurantId    = restaurantId;
+    e.timeSlotId      = timeSlotId;
+    e.reservedDate    = reservedDate;
+    e.guestCount      = guestCount;
+    e.status          = status;
+    e.cancelDeadline  = cancelDeadline;
+    e.modifyDeadline  = modifyDeadline;
+    e.noshowDeadline  = noshowDeadline;
+    e.checkedInAt     = checkedInAt;
     return e;
+  }
+
+  public void applyFrom(Reservation domain) {
+    this.userId          = domain.getUserId();
+    this.restaurantId    = domain.getRestaurantId();
+    this.timeSlotId      = domain.getTimeSlotId();
+    this.reservedDate    = domain.getReservedDate();
+    this.guestCount      = domain.getGuestCount().value();
+    this.status          = domain.getStatus();
+    this.cancelDeadline  = domain.getCancelDeadline();
+    this.modifyDeadline  = domain.getModifyDeadline();
+    this.noshowDeadline  = domain.getNoshowDeadline();
+    this.checkedInAt     = domain.getCheckedInAt();
   }
 
   public void updateSchedule(

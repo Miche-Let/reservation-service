@@ -66,7 +66,7 @@ class ReservationCommandServiceTest {
     final UUID restaurantId = UUID.randomUUID();
     final UUID timeSlotId = UUID.randomUUID();
     final UUID reservationId = UUID.randomUUID();
-    final LocalDate futureDate = LocalDate.now().plusDays(10);
+    final LocalDate futureDate   = LocalDate.now().plusDays(10);
     final LocalTime slotStartTime = LocalTime.of(19, 0);
 
     Reservation confirmedReservation() {
@@ -75,6 +75,18 @@ class ReservationCommandServiceTest {
                 futureDate, GuestCount.of(2), ReservationStatus.CONFIRMED,
                 futureDate.minusDays(2), futureDate.minusDays(2),
                 LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+        );
+    }
+
+    // 체크인 시간대 검증이 통과하도록 현재 시각이 허용 범위에 포함되는 예약
+    Reservation confirmedNow() {
+        LocalDateTime now = LocalDateTime.now();
+        return Reservation.reconstitute(
+                reservationId, userId, restaurantId, timeSlotId,
+                now.toLocalDate(), GuestCount.of(2), ReservationStatus.CONFIRMED,
+                now.toLocalDate().minusDays(2), now.toLocalDate().minusDays(2),
+                now.plusMinutes(30),   // noshowDeadline → windowStart = now - 30min, upper = now + 30min
+                null
         );
     }
 
@@ -427,7 +439,7 @@ class ReservationCommandServiceTest {
 
         @Test
         void 정상_체크인_시_COMPLETED_상태가_된다() {
-            Reservation reservation = confirmedReservation();
+            Reservation reservation = confirmedNow();
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
             commandService.checkIn(new CheckInCommand(reservationId, restaurantId));

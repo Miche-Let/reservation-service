@@ -20,7 +20,9 @@ class ReservationTest {
     final UUID restaurantId = UUID.randomUUID();
     final UUID timeSlotId = UUID.randomUUID();
     final LocalDate futureDate = LocalDate.now().plusDays(10);
-    final LocalDateTime noshowDeadline = LocalDateTime.of(futureDate, LocalTime.of(19, 30));
+    final LocalDateTime noshowDeadline   = LocalDateTime.of(futureDate, LocalTime.of(19, 30));
+    // slotStart = 19:00, window = [18:30, noshowDeadline(19:30)]
+    final LocalDateTime validCheckInTime = LocalDateTime.of(futureDate, LocalTime.of(19, 15));
 
     Reservation waitingFuture() {
         return Reservation.reconstitute(
@@ -171,8 +173,40 @@ class ReservationTest {
         @Test
         void CONFIRMED_상태에서_완료가_성공한다() {
             Reservation r = confirmedFuture();
-            r.complete();
+            r.complete(validCheckInTime);
             assertThat(r.getStatus()).isEqualTo(ReservationStatus.COMPLETED);
+            assertThat(r.getCheckedInAt()).isEqualTo(validCheckInTime);
+        }
+
+        @Test
+        void 이미_COMPLETED_상태에서_재요청_시_멱등_처리된다() {
+            Reservation r = confirmedFuture();
+            r.complete(validCheckInTime);
+            r.complete(validCheckInTime.plusMinutes(5)); // 재호출 — no-op
+            assertThat(r.getStatus()).isEqualTo(ReservationStatus.COMPLETED);
+            assertThat(r.getCheckedInAt()).isEqualTo(validCheckInTime); // checkedInAt 변경 없음
+        }
+
+        @Test
+        void 체크인_허용_시간_이전에_완료_요청_시_예외를_던진다() {
+            Reservation r = confirmedFuture();
+            LocalDateTime tooEarly = noshowDeadline.minusMinutes(61); // windowStart - 1min
+
+            assertThatThrownBy(() -> r.complete(tooEarly))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.CHECK_IN_TOO_EARLY.getCode()));
+        }
+
+        @Test
+        void 체크인_허용_시간_이후에_완료_요청_시_예외를_던진다() {
+            Reservation r = confirmedFuture();
+            LocalDateTime tooLate = noshowDeadline.plusMinutes(1);
+
+            assertThatThrownBy(() -> r.complete(tooLate))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(ReservationErrorCode.CHECK_IN_TOO_LATE.getCode()));
         }
 
         @Test
@@ -180,7 +214,7 @@ class ReservationTest {
             Reservation r = confirmedFuture();
             r.cancel();
 
-            assertThatThrownBy(r::complete)
+            assertThatThrownBy(() -> r.complete(validCheckInTime))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));
@@ -225,7 +259,7 @@ class ReservationTest {
         @Test
         void COMPLETED_상태에서_requiresSlotReturn은_false다() {
             Reservation r = confirmedFuture();
-            r.complete();
+            r.complete(validCheckInTime);
             assertThat(r.requiresSlotReturn()).isFalse();
         }
 
@@ -292,7 +326,7 @@ class ReservationTest {
         @Test
         void COMPLETED_상태에서_confirm_호출_시_예외를_던진다() {
             Reservation r = confirmedFuture();
-            r.complete();
+            r.complete(validCheckInTime);
 
             assertThatThrownBy(r::confirm)
                     .isInstanceOf(BusinessException.class)
@@ -316,7 +350,7 @@ class ReservationTest {
             Reservation r = confirmedFuture();
             r.cancel();
 
-            assertThatThrownBy(r::complete)
+            assertThatThrownBy(() -> r.complete(validCheckInTime))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));
