@@ -59,7 +59,8 @@ public class ReservationController {
     ReservationResponse response = ReservationResponse.from(
         commandService.create(new CreateReservationCommand(
             userId, waitingToken, request.restaurantId(), request.timeSlotId(),
-            request.reservedDate(), request.slotStartTime(), request.guestCount(), courses
+            request.reservedDate(), request.slotStartTime(),
+            request.guestCount(), courses
         ))
     );
     return ApiResponse.ok(ReservationSuccessCode.RESERVATION_CREATED, response);
@@ -106,7 +107,8 @@ public class ReservationController {
     ReservationResponse response = ReservationResponse.from(
         commandService.modify(new ModifyReservationCommand(
             reservationId, currentUserId(), currentUserRole(),
-            request.timeSlotId(), request.reservedDate(), request.slotStartTime(), request.guestCount(), courses
+            request.timeSlotId(), request.reservedDate(), request.slotStartTime(),
+            request.guestCount(), courses
         ))
     );
     return ApiResponse.ok(ReservationSuccessCode.RESERVATION_MODIFIED, response);

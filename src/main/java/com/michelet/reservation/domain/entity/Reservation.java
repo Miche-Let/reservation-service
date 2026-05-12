@@ -56,7 +56,7 @@ public class Reservation {
         r.state = ReservationStateFactory.from(ReservationStatus.WAITING);
         r.cancelDeadline = reservedDate.minusDays(2);
         r.modifyDeadline = reservedDate.minusDays(2);
-        r.noshowDeadline = noshowDeadline; // 타임슬롯 데이터를 가져와서 설정함
+        r.noshowDeadline = noshowDeadline;
         return r;
     }
 
@@ -105,10 +105,23 @@ public class Reservation {
         this.state = ReservationStateFactory.from(this.status);
     }
 
-    public void complete() {
-        this.status = state.complete();
-        this.state = ReservationStateFactory.from(this.status);
-        this.checkedInAt = LocalDateTime.now();
+    public void complete(LocalDateTime now) {
+        if (this.status == ReservationStatus.COMPLETED) {
+            return; // 이미 완료된 경우 멱등 처리
+        }
+        if (state.status() != ReservationStatus.CONFIRMED) {
+            throw new BusinessException(ReservationErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        LocalDateTime windowStart = noshowDeadline.minusMinutes(60); // noshowDeadline - 60min (= slotStart - 30min)
+        if (now.isBefore(windowStart)) {
+            throw new BusinessException(ReservationErrorCode.CHECK_IN_TOO_EARLY);
+        }
+        if (now.isAfter(noshowDeadline)) {
+            throw new BusinessException(ReservationErrorCode.CHECK_IN_TOO_LATE);
+        }
+        this.status      = state.complete();
+        this.state       = ReservationStateFactory.from(this.status);
+        this.checkedInAt = now;
     }
 
     public void markNoShow() {
@@ -146,12 +159,12 @@ public class Reservation {
         if (LocalDate.now().isAfter(modifyDeadline)) {
             throw new BusinessException(ReservationErrorCode.MODIFY_DEADLINE_EXCEEDED);
         }
-        this.timeSlotId = newTimeSlotId;
-        this.reservedDate = newReservedDate;
-        this.guestCount = newGuestCount;
-        this.cancelDeadline = newReservedDate.minusDays(2);
-        this.modifyDeadline = newReservedDate.minusDays(2);
-        this.noshowDeadline = newNoshowDeadline;
+        this.timeSlotId      = newTimeSlotId;
+        this.reservedDate    = newReservedDate;
+        this.guestCount      = newGuestCount;
+        this.cancelDeadline  = newReservedDate.minusDays(2);
+        this.modifyDeadline  = newReservedDate.minusDays(2);
+        this.noshowDeadline  = newNoshowDeadline;
     }
 
     private static void validateCreateInput(

@@ -40,6 +40,10 @@ public enum ReservationErrorCode implements ErrorCode {
 
   INVALID_COURSE_QUANTITY         ("RESERVATION_205", "코스 수량은 1개 이상이어야 합니다.", 400),
 
+  CHECK_IN_TOO_EARLY              ("RESERVATION_016", "아직 체크인 허용 시간 전입니다.", 400),
+  CHECK_IN_TOO_LATE               ("RESERVATION_017", "체크인 허용 시간이 지났습니다.", 400),
+  CONCURRENT_UPDATE_CONFLICT      ("RESERVATION_018", "동시 수정 요청이 충돌하였습니다. 다시 시도해 주세요.", 409),
+
   INVALID_WAITING_TOKEN           ("RESERVATION_301", "유효하지 않은 대기열 토큰입니다.", 403);
 
   private final String code;

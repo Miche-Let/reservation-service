@@ -52,8 +52,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         checkDuplicate(command.userId(), command.timeSlotId(), command.reservedDate());
 
-        LocalDateTime noshowDeadline = LocalDateTime.of(command.reservedDate(), command.slotStartTime())
-                .plusMinutes(30);
+        LocalDateTime noshowDeadline = LocalDateTime.of(command.reservedDate(), command.slotStartTime()).plusMinutes(30);
 
         // WAITING 상태로 먼저 저장 — feign 호출 전 예약 레코드 확보
         Reservation reservation = Reservation.create(
@@ -153,7 +152,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
             throw new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND);
         }
 
-        reservation.complete();
+        reservation.complete(LocalDateTime.now());
         Reservation saved = reservationRepository.save(reservation);
 
         return ReservationStatusResult.from(saved);
@@ -186,7 +185,6 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         if (requestedDate == null && requestedSlotStartTime == null) {
             return existing.getNoshowDeadline();
         }
-        // slotStartTime 명시 → 그대로 사용 / 미제공 → 기존 noshowDeadline에서 역산
         LocalTime slotStartTime = requestedSlotStartTime != null
                 ? requestedSlotStartTime
                 : existing.getNoshowDeadline().toLocalTime().minusMinutes(30);

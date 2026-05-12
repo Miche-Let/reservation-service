@@ -22,9 +22,16 @@ public class ReservationJpaRepository implements ReservationRepository {
 
     @Override
     public Reservation save(Reservation reservation) {
-        ReservationJpaEntity entity = ReservationMapper.toJpaEntity(reservation);
-        ReservationJpaEntity saved = jpaStore.save(entity);
-        return ReservationMapper.toDomain(saved);
+        if (reservation.isNew()) {
+            ReservationJpaEntity newEntity = ReservationMapper.toJpaEntity(reservation);
+            return ReservationMapper.toDomain(jpaStore.save(newEntity));
+        }
+        // version 보존을 위해 managed entity를 가져온 뒤 값을 덮어씀
+        ReservationJpaEntity entity = jpaStore.findById(reservation.getId())
+                .orElseThrow(() -> new com.michelet.common.exception.BusinessException(
+                        com.michelet.reservation.domain.exception.ReservationErrorCode.RESERVATION_NOT_FOUND));
+        entity.applyFrom(reservation);
+        return ReservationMapper.toDomain(jpaStore.save(entity));
     }
 
     @Override
