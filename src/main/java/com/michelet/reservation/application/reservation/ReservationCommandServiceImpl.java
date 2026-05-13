@@ -21,11 +21,6 @@ import com.michelet.reservation.domain.repository.ReservationCourseRepository;
 import com.michelet.reservation.domain.repository.ReservationRepository;
 import com.michelet.reservation.domain.vo.GuestCount;
 import com.michelet.reservation.domain.vo.Money;
-import com.michelet.reservation.infrastructure.kafka.KafkaTopics;
-import com.michelet.reservation.infrastructure.kafka.event.publish.CheckInCompletedEvent;
-import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationCancelledEvent;
-import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationCreatedEvent;
-import com.michelet.reservation.infrastructure.kafka.event.publish.WaitingCompletedEvent;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -106,18 +101,11 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         // reservation.created + waiting.completed 를 동일 트랜잭션 내 outbox에 적재
         // → Feign 성공 여부와 무관하게 Kafka 발행 보장 (waiting-service 측 멱등 처리 전제)
         LocalDateTime now = LocalDateTime.now();
-        outboxEventPort.record(
-                confirmed.getId(), "RESERVATION", KafkaTopics.RESERVATION_CREATED,
-                new ReservationCreatedEvent(
-                        confirmed.getId(), confirmed.getUserId(), confirmed.getRestaurantId(),
-                        confirmed.getTimeSlotId(), confirmed.getReservedDate(),
-                        confirmed.getGuestCount().value(), now
-                )
-        );
-        outboxEventPort.record(
-                tokenResult.waitingId(), "WAITING", KafkaTopics.WAITING_COMPLETED,
-                new WaitingCompletedEvent(tokenResult.waitingId(), confirmed.getId(), now)
-        );
+        outboxEventPort.recordReservationCreated(
+                confirmed.getId(), confirmed.getUserId(), confirmed.getRestaurantId(),
+                confirmed.getTimeSlotId(), confirmed.getReservedDate(),
+                confirmed.getGuestCount().value(), now);
+        outboxEventPort.recordWaitingCompleted(tokenResult.waitingId(), confirmed.getId(), now);
 
         return toResult(confirmed, savedCourses);
     }
@@ -186,15 +174,10 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         reservation.cancel();
         Reservation saved = reservationRepository.save(reservation);
 
-        outboxEventPort.record(
-                saved.getId(), "RESERVATION", KafkaTopics.RESERVATION_CANCELLED,
-                new ReservationCancelledEvent(
-                        saved.getId(), saved.getUserId(), saved.getRestaurantId(),
-                        saved.getTimeSlotId(), saved.getReservedDate(),
-                        saved.getGuestCount().value(), saved.getStatus().name(),
-                        LocalDateTime.now()
-                )
-        );
+        outboxEventPort.recordReservationCancelled(
+                saved.getId(), saved.getUserId(), saved.getRestaurantId(),
+                saved.getTimeSlotId(), saved.getReservedDate(),
+                saved.getGuestCount().value(), saved.getStatus().name(), LocalDateTime.now());
 
         timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
     }
@@ -220,13 +203,9 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         reservation.complete(LocalDateTime.now());
         Reservation saved = reservationRepository.save(reservation);
 
-        outboxEventPort.record(
-                saved.getId(), "RESERVATION", KafkaTopics.RESERVATION_CHECKED_IN,
-                CheckInCompletedEvent.of(
-                        saved.getId(), saved.getRestaurantId(),
-                        saved.getReservedDate(), saved.getCheckedInAt()
-                )
-        );
+        outboxEventPort.recordCheckInCompleted(
+                saved.getId(), saved.getRestaurantId(),
+                saved.getReservedDate(), saved.getCheckedInAt());
 
         return ReservationStatusResult.from(saved);
     }
