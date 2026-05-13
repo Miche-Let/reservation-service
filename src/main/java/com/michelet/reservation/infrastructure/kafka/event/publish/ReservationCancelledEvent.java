@@ -10,5 +10,7 @@ public record ReservationCancelledEvent(
     UUID restaurantId,
     UUID timeSlotId,
     LocalDate reservedDate,
+    int guestCount,
+    String cancelledStatus,
     LocalDateTime occurredAt
 ) {}
