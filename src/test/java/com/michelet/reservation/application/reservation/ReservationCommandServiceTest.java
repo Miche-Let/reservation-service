@@ -511,7 +511,7 @@ class ReservationCommandServiceTest {
             commandService.checkIn(new CheckInCommand(reservationId, restaurantId, staffId));
 
             assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.COMPLETED);
-            verify(outboxEventPort).recordCheckInCompleted(any(), any(), any(), any(), any());
+            verify(outboxEventPort).recordCheckInCompleted(any(), any(), any(), eq(staffId), any());
         }
 
         @Test
