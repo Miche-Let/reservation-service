@@ -8,6 +8,7 @@ import com.michelet.reservation.infrastructure.kafka.KafkaTopics;
 import com.michelet.reservation.infrastructure.kafka.event.publish.CheckInCompletedEvent;
 import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationCancelledEvent;
 import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationCreatedEvent;
+import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationDeletedEvent;
 import com.michelet.reservation.infrastructure.kafka.event.publish.WaitingCompletedEvent;
 import com.michelet.reservation.infrastructure.outbox.entity.OutboxEventJpaEntity;
 import java.time.LocalDate;
@@ -45,6 +46,14 @@ public class OutboxEventAdapter implements OutboxEventPort {
     public void recordWaitingCompleted(UUID waitingId, UUID reservationId, LocalDateTime occurredAt) {
         save(waitingId, AggregateType.WAITING, KafkaTopics.WAITING_COMPLETED,
                 new WaitingCompletedEvent(waitingId, reservationId, occurredAt));
+    }
+
+    @Override
+    public void recordReservationDeleted(UUID reservationId, UUID userId, UUID restaurantId,
+                                         UUID timeSlotId, int guestCount, LocalDateTime occurredAt) {
+        save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_DELETED,
+                new ReservationDeletedEvent(reservationId, userId, restaurantId,
+                        timeSlotId, guestCount, occurredAt));
     }
 
     @Override

@@ -182,15 +182,34 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                 saved.getTimeSlotId(), saved.getReservedDate(),
                 saved.getGuestCount().value(), saved.getStatus(), LocalDateTime.now());
 
-        timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
+        // Feign 복구 실패 시 예외 전파하지 않음 — reservation.cancelled outbox 이벤트를
+        // timeslot-service가 소비하여 비동기 복구
+        try {
+            timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
+        } catch (Exception e) {
+            log.warn("[cancel] 슬롯 복구 Feign 실패 — reservation.cancelled outbox 이벤트로 비동기 복구 예정 " +
+                    "(reservationId={}, timeSlotId={})", saved.getId(), saved.getTimeSlotId(), e);
+        }
     }
 
     @Override
     public void delete(DeleteReservationCommand command) {
         Reservation reservation = findAndVerifyOwnership(command.reservationId(), command.userId(), command.userRole());
         reservationRepository.delete(reservation.getId(), command.userId());
+
+        outboxEventPort.recordReservationDeleted(
+                reservation.getId(), reservation.getUserId(), reservation.getRestaurantId(),
+                reservation.getTimeSlotId(), reservation.getGuestCount().value(), LocalDateTime.now());
+
+        // Feign 복구 실패 시 예외 전파하지 않음 — reservation.deleted outbox 이벤트를
+        // timeslot-service가 소비하여 비동기 복구
         if (reservation.requiresSlotReturn()) {
-            timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
+            try {
+                timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
+            } catch (Exception e) {
+                log.warn("[delete] 슬롯 복구 Feign 실패 — reservation.deleted outbox 이벤트로 비동기 복구 예정 " +
+                        "(reservationId={}, timeSlotId={})", reservation.getId(), reservation.getTimeSlotId(), e);
+            }
         }
     }
 
