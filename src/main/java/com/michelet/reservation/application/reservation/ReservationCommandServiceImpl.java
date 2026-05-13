@@ -1,8 +1,10 @@
 package com.michelet.reservation.application.reservation;
 
 import com.michelet.common.exception.BusinessException;
-import com.michelet.reservation.application.event.ReservationCreatedAppEvent;
 import com.michelet.reservation.application.exception.ExternalCallFailedException;
+import com.michelet.reservation.application.port.OutboxEventPort;
+import com.michelet.reservation.application.port.TimeSlotPort;
+import com.michelet.reservation.application.port.WaitingPort;
 import com.michelet.reservation.application.reservation.command.CancelReservationCommand;
 import com.michelet.reservation.application.reservation.command.CheckInCommand;
 import com.michelet.reservation.application.reservation.command.CreateReservationCommand;
@@ -19,8 +21,11 @@ import com.michelet.reservation.domain.repository.ReservationCourseRepository;
 import com.michelet.reservation.domain.repository.ReservationRepository;
 import com.michelet.reservation.domain.vo.GuestCount;
 import com.michelet.reservation.domain.vo.Money;
-import com.michelet.reservation.application.port.TimeSlotPort;
-import com.michelet.reservation.application.port.WaitingPort;
+import com.michelet.reservation.infrastructure.kafka.KafkaTopics;
+import com.michelet.reservation.infrastructure.kafka.event.publish.CheckInCompletedEvent;
+import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationCancelledEvent;
+import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationCreatedEvent;
+import com.michelet.reservation.infrastructure.kafka.event.publish.WaitingCompletedEvent;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -28,7 +33,6 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,7 +46,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     private final ReservationCourseRepository reservationCourseRepository;
     private final TimeSlotPort timeSlotPort;
     private final WaitingPort waitingPort;
-    private final ApplicationEventPublisher eventPublisher;
+    private final OutboxEventPort outboxEventPort;
 
     @Override
     public ReservationResult create(CreateReservationCommand command) {
@@ -69,37 +73,51 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         Reservation saved = reservationRepository.save(reservation);
         List<ReservationCourse> savedCourses = saveCourses(saved.getId(), command.courses());
 
-        // Phase 1: 슬롯 차감 — 실패 시 WAITING 유지 (트랜잭션 커밋)
-        // 비즈니스 거부(슬롯 부족 등)는 BusinessException 전파 → 트랜잭션 롤백
-        // TODO: Outbox 패턴 도입 후 WAITING 예약 자동 재처리 스케줄러 구현 필요
+        // 슬롯 차감 — 오버셀링 방지를 위해 동기 Feign 유지
+        // 비즈니스 거부(슬롯 부족)는 BusinessException 전파 → 트랜잭션 롤백
+        // 외부 장애 시 즉시 실패 처리 (트랜잭션 롤백 — WAITING 레코드 제거)
         try {
             timeSlotPort.decrementStock(saved.getTimeSlotId(), saved.getGuestCount().value(), saved.getId());
         } catch (ExternalCallFailedException e) {
-            log.warn("[create] timeslot-service 호출 실패 — 예약 WAITING 유지 (reservationId={})", saved.getId(), e);
-            return toResult(saved, savedCourses);
+            // 슬롯 차감 실패(타임아웃 포함) 시 즉시 실패 처리 — WAITING 상태를 고객에게 노출하지 않음
+            // 고객은 즉시 재시도 가능하며, WAITING 레코드는 트랜잭션 롤백으로 함께 제거됨
+            //
+            // [주의] 타임아웃 케이스에서 timeslot-service가 실제로 차감을 완료했을 가능성이 있음.
+            // 이 경우 예약 레코드도 없고 reservation.cancelled 이벤트도 발행되지 않으므로
+            // timeslot-service 측에 고아 차감(orphaned deduction)이 발생할 수 있음.
+            // → 향후 Saga 보상 트랜잭션 설계 시 timeslot-service가
+            //    "reservationId 기준으로 일정 시간 내 예약 확정 이벤트 미수신 시 자동 복구"
+            //    로직을 갖춰야 이 케이스가 완전히 해결됨.
+            throw new BusinessException(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE);
         }
 
-        // Phase 2: 대기열 완료 — 슬롯 차감 성공 이후이므로 실패해도 예약 확정 진행
-        // 대기열 항목은 TTL 만료 또는 운영자 정리로 처리됨
-        // TODO: WaitingAdapter에도 ExternalCallFailedException 래핑 적용 필요
+        // Phase 2: 대기열 완료 — Feign 직접 호출 (빠른 경로)
+        // 실패해도 예약 확정 계속 진행 (outbox 이벤트가 재처리 보장)
+        // waiting-service는 Feign + Kafka 양쪽에서 수신할 수 있으므로 멱등 처리 필수
         try {
             waitingPort.completeWaiting(tokenResult.waitingId());
         } catch (RuntimeException e) {
-            log.warn("[create] 대기열 완료 처리 실패 — 예약 확정 계속 진행 (waitingId={})", tokenResult.waitingId(), e);
+            log.warn("[create] 대기열 완료 Feign 호출 실패 — outbox 이벤트로 재처리 보장 (waitingId={})", tokenResult.waitingId(), e);
         }
 
         saved.confirm();
         Reservation confirmed = reservationRepository.save(saved);
 
-        // DB 커밋 완료 후 Kafka 발행 — AFTER_COMMIT 훅을 통해 처리됨
-        eventPublisher.publishEvent(new ReservationCreatedAppEvent(
-                confirmed.getId(),
-                confirmed.getUserId(),
-                confirmed.getRestaurantId(),
-                confirmed.getTimeSlotId(),
-                confirmed.getReservedDate(),
-                confirmed.getGuestCount().value()
-        ));
+        // reservation.created + waiting.completed 를 동일 트랜잭션 내 outbox에 적재
+        // → Feign 성공 여부와 무관하게 Kafka 발행 보장 (waiting-service 측 멱등 처리 전제)
+        LocalDateTime now = LocalDateTime.now();
+        outboxEventPort.record(
+                confirmed.getId(), "RESERVATION", KafkaTopics.RESERVATION_CREATED,
+                new ReservationCreatedEvent(
+                        confirmed.getId(), confirmed.getUserId(), confirmed.getRestaurantId(),
+                        confirmed.getTimeSlotId(), confirmed.getReservedDate(),
+                        confirmed.getGuestCount().value(), now
+                )
+        );
+        outboxEventPort.record(
+                tokenResult.waitingId(), "WAITING", KafkaTopics.WAITING_COMPLETED,
+                new WaitingCompletedEvent(tokenResult.waitingId(), confirmed.getId(), now)
+        );
 
         return toResult(confirmed, savedCourses);
     }
@@ -166,7 +184,17 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         Reservation reservation = findAndVerifyOwnership(command.reservationId(), command.userId(), command.userRole());
 
         reservation.cancel();
-        reservationRepository.save(reservation);
+        Reservation saved = reservationRepository.save(reservation);
+
+        outboxEventPort.record(
+                saved.getId(), "RESERVATION", KafkaTopics.RESERVATION_CANCELLED,
+                new ReservationCancelledEvent(
+                        saved.getId(), saved.getUserId(), saved.getRestaurantId(),
+                        saved.getTimeSlotId(), saved.getReservedDate(),
+                        saved.getGuestCount().value(), saved.getStatus().name(),
+                        LocalDateTime.now()
+                )
+        );
 
         timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
     }
@@ -191,6 +219,14 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         reservation.complete(LocalDateTime.now());
         Reservation saved = reservationRepository.save(reservation);
+
+        outboxEventPort.record(
+                saved.getId(), "RESERVATION", KafkaTopics.RESERVATION_CHECKED_IN,
+                CheckInCompletedEvent.of(
+                        saved.getId(), saved.getRestaurantId(),
+                        saved.getReservedDate(), saved.getCheckedInAt()
+                )
+        );
 
         return ReservationStatusResult.from(saved);
     }
