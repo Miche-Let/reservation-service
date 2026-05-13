@@ -1,5 +1,6 @@
 package com.michelet.reservation.infrastructure.outbox.entity;
 
+import com.michelet.reservation.infrastructure.outbox.AggregateType;
 import com.michelet.reservation.infrastructure.outbox.OutboxStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -26,8 +27,9 @@ public class OutboxEventJpaEntity {
     @Id
     private UUID id;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "aggregate_type", nullable = false, length = 100)
-    private String aggregateType;
+    private AggregateType aggregateType;
 
     @Column(name = "aggregate_id", nullable = false)
     private UUID aggregateId;
@@ -51,7 +53,7 @@ public class OutboxEventJpaEntity {
     @Column(name = "processed_at")
     private LocalDateTime processedAt;
 
-    public static OutboxEventJpaEntity create(UUID aggregateId, String aggregateType,
+    public static OutboxEventJpaEntity create(UUID aggregateId, AggregateType aggregateType,
                                                String eventType, String payload) {
         OutboxEventJpaEntity e = new OutboxEventJpaEntity();
         e.id = UUID.randomUUID();

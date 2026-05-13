@@ -1,5 +1,6 @@
 package com.michelet.reservation.application.port;
 
+import com.michelet.reservation.domain.enums.ReservationStatus;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -12,7 +13,7 @@ public interface OutboxEventPort {
 
     void recordReservationCancelled(UUID reservationId, UUID userId, UUID restaurantId,
                                     UUID timeSlotId, LocalDate reservedDate, int guestCount,
-                                    String cancelledStatus, LocalDateTime occurredAt);
+                                    ReservationStatus cancelledStatus, LocalDateTime occurredAt);
 
     void recordWaitingCompleted(UUID waitingId, UUID reservationId, LocalDateTime occurredAt);
 

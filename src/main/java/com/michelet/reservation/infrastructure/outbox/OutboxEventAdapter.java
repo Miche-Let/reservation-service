@@ -3,6 +3,7 @@ package com.michelet.reservation.infrastructure.outbox;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.michelet.reservation.application.port.OutboxEventPort;
+import com.michelet.reservation.domain.enums.ReservationStatus;
 import com.michelet.reservation.infrastructure.kafka.KafkaTopics;
 import com.michelet.reservation.infrastructure.kafka.event.publish.CheckInCompletedEvent;
 import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationCancelledEvent;
@@ -26,7 +27,7 @@ public class OutboxEventAdapter implements OutboxEventPort {
     public void recordReservationCreated(UUID reservationId, UUID userId, UUID restaurantId,
                                          UUID timeSlotId, LocalDate reservedDate, int guestCount,
                                          LocalDateTime occurredAt) {
-        save(reservationId, "RESERVATION", KafkaTopics.RESERVATION_CREATED,
+        save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_CREATED,
                 new ReservationCreatedEvent(reservationId, userId, restaurantId,
                         timeSlotId, reservedDate, guestCount, occurredAt));
     }
@@ -34,26 +35,26 @@ public class OutboxEventAdapter implements OutboxEventPort {
     @Override
     public void recordReservationCancelled(UUID reservationId, UUID userId, UUID restaurantId,
                                            UUID timeSlotId, LocalDate reservedDate, int guestCount,
-                                           String cancelledStatus, LocalDateTime occurredAt) {
-        save(reservationId, "RESERVATION", KafkaTopics.RESERVATION_CANCELLED,
+                                           ReservationStatus cancelledStatus, LocalDateTime occurredAt) {
+        save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_CANCELLED,
                 new ReservationCancelledEvent(reservationId, userId, restaurantId,
-                        timeSlotId, reservedDate, guestCount, cancelledStatus, occurredAt));
+                        timeSlotId, reservedDate, guestCount, cancelledStatus.name(), occurredAt));
     }
 
     @Override
     public void recordWaitingCompleted(UUID waitingId, UUID reservationId, LocalDateTime occurredAt) {
-        save(waitingId, "WAITING", KafkaTopics.WAITING_COMPLETED,
+        save(waitingId, AggregateType.WAITING, KafkaTopics.WAITING_COMPLETED,
                 new WaitingCompletedEvent(waitingId, reservationId, occurredAt));
     }
 
     @Override
     public void recordCheckInCompleted(UUID reservationId, UUID restaurantId,
                                        LocalDate visitDate, LocalDateTime checkedInAt) {
-        save(reservationId, "RESERVATION", KafkaTopics.RESERVATION_CHECKED_IN,
+        save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_CHECKED_IN,
                 CheckInCompletedEvent.of(reservationId, restaurantId, visitDate, checkedInAt));
     }
 
-    private void save(UUID aggregateId, String aggregateType, String eventType, Object payload) {
+    private void save(UUID aggregateId, AggregateType aggregateType, String eventType, Object payload) {
         try {
             String json = objectMapper.writeValueAsString(payload);
             outboxEventJpaRepository.save(

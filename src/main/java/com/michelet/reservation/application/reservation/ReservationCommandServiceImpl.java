@@ -177,7 +177,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         outboxEventPort.recordReservationCancelled(
                 saved.getId(), saved.getUserId(), saved.getRestaurantId(),
                 saved.getTimeSlotId(), saved.getReservedDate(),
-                saved.getGuestCount().value(), saved.getStatus().name(), LocalDateTime.now());
+                saved.getGuestCount().value(), saved.getStatus(), LocalDateTime.now());
 
         timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
     }
