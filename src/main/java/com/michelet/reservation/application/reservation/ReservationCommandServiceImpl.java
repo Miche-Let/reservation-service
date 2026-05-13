@@ -75,7 +75,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         // 슬롯 차감 — 오버셀링 방지를 위해 동기 Feign 유지
         // 비즈니스 거부(슬롯 부족)는 BusinessException 전파 → 트랜잭션 롤백
-        // 외부 장애 시 WAITING 유지 (다음 폴링에서 재처리 가능)
+        // 외부 장애 시 즉시 실패 처리 (트랜잭션 롤백 — WAITING 레코드 제거)
         try {
             timeSlotPort.decrementStock(saved.getTimeSlotId(), saved.getGuestCount().value(), saved.getId());
         } catch (ExternalCallFailedException e) {

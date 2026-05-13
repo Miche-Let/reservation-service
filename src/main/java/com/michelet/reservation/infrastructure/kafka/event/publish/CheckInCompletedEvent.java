@@ -10,7 +10,6 @@ public record CheckInCompletedEvent(
         UUID reservationId,
         UUID restaurantId,
         LocalDate visitDate,
-        UUID checkedInBy,
         LocalDateTime checkedInAt,
         LocalDateTime eventCreatedAt
 ) {
@@ -22,7 +21,6 @@ public record CheckInCompletedEvent(
                 reservationId,
                 restaurantId,
                 visitDate,
-                restaurantId,
                 checkedInAt,
                 LocalDateTime.now()
         );
