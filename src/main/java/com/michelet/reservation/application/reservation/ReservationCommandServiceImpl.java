@@ -22,6 +22,7 @@ import com.michelet.reservation.domain.repository.ReservationRepository;
 import com.michelet.reservation.domain.vo.GuestCount;
 import com.michelet.reservation.domain.vo.Money;
 import com.michelet.reservation.infrastructure.kafka.KafkaTopics;
+import com.michelet.reservation.infrastructure.kafka.event.publish.CheckInCompletedEvent;
 import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationCancelledEvent;
 import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationCreatedEvent;
 import com.michelet.reservation.infrastructure.kafka.event.publish.WaitingCompletedEvent;
@@ -209,6 +210,14 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         reservation.complete(LocalDateTime.now());
         Reservation saved = reservationRepository.save(reservation);
+
+        outboxEventPort.record(
+                saved.getId(), "RESERVATION", KafkaTopics.RESERVATION_CHECKED_IN,
+                CheckInCompletedEvent.of(
+                        saved.getId(), saved.getRestaurantId(),
+                        saved.getReservedDate(), saved.getCheckedInAt()
+                )
+        );
 
         return ReservationStatusResult.from(saved);
     }
