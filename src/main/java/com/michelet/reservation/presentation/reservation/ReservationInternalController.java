@@ -42,7 +42,7 @@ public class ReservationInternalController {
             @RequestBody @Valid CheckInRequest request
     ) {
         return ApiResponse.ok(ReservationSuccessCode.RESERVATION_CHECKED_IN,
-                ReservationStatusResponse.from(commandService.checkIn(CheckInCommand.from(request))));
+                ReservationStatusResponse.from(commandService.checkIn(new CheckInCommand(request.reservationId(), request.restaurantId()))));
     }
 
     @GetMapping("/exists")
