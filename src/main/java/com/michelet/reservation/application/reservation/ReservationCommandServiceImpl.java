@@ -77,12 +77,11 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
             // 슬롯 차감 실패(타임아웃 포함) 시 즉시 실패 처리 — WAITING 상태를 고객에게 노출하지 않음
             // 고객은 즉시 재시도 가능하며, WAITING 레코드는 트랜잭션 롤백으로 함께 제거됨
             //
-            // [주의] 타임아웃 케이스에서 timeslot-service가 실제로 차감을 완료했을 가능성이 있음.
-            // 이 경우 예약 레코드도 없고 reservation.cancelled 이벤트도 발행되지 않으므로
-            // timeslot-service 측에 고아 차감(orphaned deduction)이 발생할 수 있음.
-            // → 향후 Saga 보상 트랜잭션 설계 시 timeslot-service가
-            //    "reservationId 기준으로 일정 시간 내 예약 확정 이벤트 미수신 시 자동 복구"
-            //    로직을 갖춰야 이 케이스가 완전히 해결됨.
+            // 타임아웃 케이스에서 timeslot-service가 실제로 차감을 완료했을 가능성이 있음.
+            // REQUIRES_NEW 트랜잭션으로 보상 이벤트 저장 — 메인 트랜잭션 롤백과 무관하게 커밋됨.
+            // timeslot-service는 reservation.creation.voided 이벤트를 소비하여 고아 차감을 복구함.
+            outboxEventPort.recordReservationCreationVoided(
+                    saved.getId(), saved.getTimeSlotId(), saved.getGuestCount().value(), LocalDateTime.now());
             throw new BusinessException(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE);
         }
 
@@ -141,17 +140,26 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         List<ReservationCourse> courses = updateCourses(saved.getId(), command.courses());
 
         if (slotChanged) {
-            // 슬롯 변경: 새 슬롯에 새 인원 전체 차감 확인 후 원래 슬롯 복구
+            // 슬롯 변경: 새 슬롯 차감 실패 시 롤백 (유효성 보장 필수)
             try {
                 timeSlotPort.decrementStock(newTimeSlotId, newGuestCount, command.reservationId());
             } catch (ExternalCallFailedException e) {
                 log.error("[modify] timeslot-service 호출 실패 — 예약 변경 롤백 (reservationId={})", command.reservationId(), e);
+                // 타임아웃 케이스에서 timeslot-service가 실제로 차감을 완료했을 가능성이 있음.
+                // REQUIRES_NEW 트랜잭션으로 보상 이벤트 저장 — 메인 트랜잭션 롤백과 무관하게 커밋됨.
+                outboxEventPort.recordReservationModificationVoided(
+                        command.reservationId(), newTimeSlotId, newGuestCount, LocalDateTime.now());
                 throw new BusinessException(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE);
             }
-            // [주의] decrementStock 성공 후 incrementStock이 실패하면 DB는 롤백되지만
-            // 새 슬롯의 차감은 취소 불가 → 고아 차감(orphaned deduction) 발생.
-            // create()의 타임아웃 케이스와 동일한 구조적 한계이며, Saga 보상 트랜잭션 도입 시 해결 예정.
-            timeSlotPort.incrementStock(originalTimeSlotId, originalGuestCount);
+            // 기존 슬롯 복구 — outbox 이벤트를 먼저 저장하여 Feign 실패 시 비동기 복구 보장
+            outboxEventPort.recordSlotReleased(
+                    command.reservationId(), originalTimeSlotId, originalGuestCount, LocalDateTime.now());
+            try {
+                timeSlotPort.incrementStock(originalTimeSlotId, originalGuestCount);
+            } catch (Exception e) {
+                log.warn("[modify] 기존 슬롯 복구 Feign 실패 — reservation.slot.released outbox 이벤트로 비동기 복구 예정 " +
+                        "(reservationId={}, timeSlotId={})", command.reservationId(), originalTimeSlotId, e);
+            }
         } else if (guestCountChanged) {
             // 동일 슬롯에서 인원만 변경: delta(newGuestCount - originalGuestCount)만 처리
             int delta = newGuestCount - originalGuestCount;
@@ -160,10 +168,22 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                     timeSlotPort.decrementStock(newTimeSlotId, delta, command.reservationId());
                 } catch (ExternalCallFailedException e) {
                     log.error("[modify] 인원 증가 차감 실패 — 예약 변경 롤백 (reservationId={})", command.reservationId(), e);
+                    // 타임아웃 케이스에서 timeslot-service가 실제로 차감을 완료했을 가능성이 있음.
+                    // REQUIRES_NEW 트랜잭션으로 보상 이벤트 저장 — 메인 트랜잭션 롤백과 무관하게 커밋됨.
+                    outboxEventPort.recordReservationModificationVoided(
+                            command.reservationId(), newTimeSlotId, delta, LocalDateTime.now());
                     throw new BusinessException(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE);
                 }
             } else {
-                timeSlotPort.incrementStock(originalTimeSlotId, -delta);
+                // 인원 감소 — 슬롯 복구 outbox 이벤트로 비동기 복구 보장
+                outboxEventPort.recordSlotReleased(
+                        command.reservationId(), originalTimeSlotId, -delta, LocalDateTime.now());
+                try {
+                    timeSlotPort.incrementStock(originalTimeSlotId, -delta);
+                } catch (Exception e) {
+                    log.warn("[modify] 인원 감소 슬롯 복구 Feign 실패 — reservation.slot.released outbox 이벤트로 비동기 복구 예정 " +
+                            "(reservationId={}, timeSlotId={})", command.reservationId(), originalTimeSlotId, e);
+                }
             }
         }
 
@@ -182,15 +202,34 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                 saved.getTimeSlotId(), saved.getReservedDate(),
                 saved.getGuestCount().value(), saved.getStatus(), LocalDateTime.now());
 
-        timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
+        // Feign 복구 실패 시 예외 전파하지 않음 — reservation.cancelled outbox 이벤트를
+        // timeslot-service가 소비하여 비동기 복구
+        try {
+            timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
+        } catch (Exception e) {
+            log.warn("[cancel] 슬롯 복구 Feign 실패 — reservation.cancelled outbox 이벤트로 비동기 복구 예정 " +
+                    "(reservationId={}, timeSlotId={})", saved.getId(), saved.getTimeSlotId(), e);
+        }
     }
 
     @Override
     public void delete(DeleteReservationCommand command) {
         Reservation reservation = findAndVerifyOwnership(command.reservationId(), command.userId(), command.userRole());
         reservationRepository.delete(reservation.getId(), command.userId());
+
+        outboxEventPort.recordReservationDeleted(
+                reservation.getId(), reservation.getUserId(), reservation.getRestaurantId(),
+                reservation.getTimeSlotId(), reservation.getGuestCount().value(), LocalDateTime.now());
+
+        // Feign 복구 실패 시 예외 전파하지 않음 — reservation.deleted outbox 이벤트를
+        // timeslot-service가 소비하여 비동기 복구
         if (reservation.requiresSlotReturn()) {
-            timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
+            try {
+                timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
+            } catch (Exception e) {
+                log.warn("[delete] 슬롯 복구 Feign 실패 — reservation.deleted outbox 이벤트로 비동기 복구 예정 " +
+                        "(reservationId={}, timeSlotId={})", reservation.getId(), reservation.getTimeSlotId(), e);
+            }
         }
     }
 

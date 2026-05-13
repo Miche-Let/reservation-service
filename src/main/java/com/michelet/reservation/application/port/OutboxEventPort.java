@@ -17,6 +17,18 @@ public interface OutboxEventPort {
 
     void recordWaitingCompleted(UUID waitingId, UUID reservationId, LocalDateTime occurredAt);
 
+    void recordReservationDeleted(UUID reservationId, UUID userId, UUID restaurantId,
+                                  UUID timeSlotId, int guestCount, LocalDateTime occurredAt);
+
     void recordCheckInCompleted(UUID reservationId, UUID restaurantId,
                                 LocalDate visitDate, UUID checkedInBy, LocalDateTime checkedInAt);
+
+    void recordReservationCreationVoided(UUID reservationId, UUID timeSlotId, int guestCount,
+                                         LocalDateTime occurredAt);
+
+    void recordReservationModificationVoided(UUID reservationId, UUID timeSlotId, int capacity,
+                                             LocalDateTime occurredAt);
+
+    void recordSlotReleased(UUID reservationId, UUID timeSlotId, int capacity,
+                            LocalDateTime occurredAt);
 }

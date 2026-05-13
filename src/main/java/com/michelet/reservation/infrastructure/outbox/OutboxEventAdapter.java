@@ -8,6 +8,10 @@ import com.michelet.reservation.infrastructure.kafka.KafkaTopics;
 import com.michelet.reservation.infrastructure.kafka.event.publish.CheckInCompletedEvent;
 import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationCancelledEvent;
 import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationCreatedEvent;
+import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationCreationVoidedEvent;
+import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationModificationVoidedEvent;
+import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationDeletedEvent;
+import com.michelet.reservation.infrastructure.kafka.event.publish.ReservationSlotReleasedEvent;
 import com.michelet.reservation.infrastructure.kafka.event.publish.WaitingCompletedEvent;
 import com.michelet.reservation.infrastructure.outbox.entity.OutboxEventJpaEntity;
 import java.time.LocalDate;
@@ -15,6 +19,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
@@ -48,10 +54,41 @@ public class OutboxEventAdapter implements OutboxEventPort {
     }
 
     @Override
+    public void recordReservationDeleted(UUID reservationId, UUID userId, UUID restaurantId,
+                                         UUID timeSlotId, int guestCount, LocalDateTime occurredAt) {
+        save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_DELETED,
+                new ReservationDeletedEvent(reservationId, userId, restaurantId,
+                        timeSlotId, guestCount, occurredAt));
+    }
+
+    @Override
     public void recordCheckInCompleted(UUID reservationId, UUID restaurantId,
                                        LocalDate visitDate, UUID checkedInBy, LocalDateTime checkedInAt) {
         save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_CHECKED_IN,
                 CheckInCompletedEvent.of(reservationId, restaurantId, visitDate, checkedInBy, checkedInAt));
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordReservationCreationVoided(UUID reservationId, UUID timeSlotId, int guestCount,
+                                                LocalDateTime occurredAt) {
+        save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_CREATION_VOIDED,
+                new ReservationCreationVoidedEvent(reservationId, timeSlotId, guestCount, occurredAt));
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordReservationModificationVoided(UUID reservationId, UUID timeSlotId, int capacity,
+                                                    LocalDateTime occurredAt) {
+        save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_MODIFICATION_VOIDED,
+                new ReservationModificationVoidedEvent(reservationId, timeSlotId, capacity, occurredAt));
+    }
+
+    @Override
+    public void recordSlotReleased(UUID reservationId, UUID timeSlotId, int capacity,
+                                   LocalDateTime occurredAt) {
+        save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_SLOT_RELEASED,
+                new ReservationSlotReleasedEvent(reservationId, timeSlotId, capacity, occurredAt));
     }
 
     private void save(UUID aggregateId, AggregateType aggregateType, String eventType, Object payload) {
