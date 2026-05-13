@@ -91,11 +91,20 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
             throw new BusinessException(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE);
         }
 
+        // Phase 2: 대기열 완료 — Feign 직접 호출 (빠른 경로)
+        // 실패해도 예약 확정 계속 진행 (outbox 이벤트가 재처리 보장)
+        // waiting-service는 Feign + Kafka 양쪽에서 수신할 수 있으므로 멱등 처리 필수
+        try {
+            waitingPort.completeWaiting(tokenResult.waitingId());
+        } catch (RuntimeException e) {
+            log.warn("[create] 대기열 완료 Feign 호출 실패 — outbox 이벤트로 재처리 보장 (waitingId={})", tokenResult.waitingId(), e);
+        }
+
         saved.confirm();
         Reservation confirmed = reservationRepository.save(saved);
 
         // reservation.created + waiting.completed 를 동일 트랜잭션 내 outbox에 적재
-        // → 트랜잭션 커밋과 이벤트 발행이 원자적으로 보장됨
+        // → Feign 성공 여부와 무관하게 Kafka 발행 보장 (waiting-service 측 멱등 처리 전제)
         LocalDateTime now = LocalDateTime.now();
         outboxEventPort.record(
                 confirmed.getId(), "RESERVATION", KafkaTopics.RESERVATION_CREATED,
