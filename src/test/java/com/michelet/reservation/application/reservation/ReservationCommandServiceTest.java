@@ -475,7 +475,7 @@ class ReservationCommandServiceTest {
         }
 
         @Test
-        void CANCELLED_UNPAID_예약_삭제_시_재고를_복구하지_않고_이벤트는_적재된다() {
+        void CANCELLED_UNPAID_예약_삭제_시_재고_복구와_이벤트_적재_모두_하지_않는다() {
             Reservation reservation = Reservation.reconstitute(
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_UNPAID,
@@ -488,11 +488,11 @@ class ReservationCommandServiceTest {
 
             verify(reservationRepository).delete(eq(reservationId), eq(userId));
             verify(timeSlotPort, never()).incrementStock(any(), anyInt());
-            verify(outboxEventPort).recordReservationDeleted(any(), any(), any(), any(), anyInt(), any());
+            verify(outboxEventPort, never()).recordReservationDeleted(any(), any(), any(), any(), anyInt(), any());
         }
 
         @Test
-        void COMPLETED_예약_삭제_시_재고를_복구하지_않고_이벤트는_적재된다() {
+        void COMPLETED_예약_삭제_시_재고_복구와_이벤트_적재_모두_하지_않는다() {
             Reservation reservation = Reservation.reconstitute(
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.COMPLETED,
@@ -505,7 +505,7 @@ class ReservationCommandServiceTest {
 
             verify(reservationRepository).delete(eq(reservationId), eq(userId));
             verify(timeSlotPort, never()).incrementStock(any(), anyInt());
-            verify(outboxEventPort).recordReservationDeleted(any(), any(), any(), any(), anyInt(), any());
+            verify(outboxEventPort, never()).recordReservationDeleted(any(), any(), any(), any(), anyInt(), any());
         }
 
         @Test
