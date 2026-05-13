@@ -148,6 +148,9 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                 log.error("[modify] timeslot-service 호출 실패 — 예약 변경 롤백 (reservationId={})", command.reservationId(), e);
                 throw new BusinessException(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE);
             }
+            // [주의] decrementStock 성공 후 incrementStock이 실패하면 DB는 롤백되지만
+            // 새 슬롯의 차감은 취소 불가 → 고아 차감(orphaned deduction) 발생.
+            // create()의 타임아웃 케이스와 동일한 구조적 한계이며, Saga 보상 트랜잭션 도입 시 해결 예정.
             timeSlotPort.incrementStock(originalTimeSlotId, originalGuestCount);
         } else if (guestCountChanged) {
             // 동일 슬롯에서 인원만 변경: delta(newGuestCount - originalGuestCount)만 처리
