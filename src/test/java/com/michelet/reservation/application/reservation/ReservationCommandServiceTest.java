@@ -142,7 +142,8 @@ class ReservationCommandServiceTest {
             verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2), any(UUID.class));
             verify(waitingPort).completeWaiting(eq(waitingId));
             // reservation.created + waiting.completed 2개 적재
-            verify(outboxEventPort, times(2)).record(any(), any(), any(), any());
+            verify(outboxEventPort).recordReservationCreated(any(), any(), any(), any(), any(), anyInt(), any());
+            verify(outboxEventPort).recordWaitingCompleted(any(), any(), any());
         }
 
         @Test
@@ -177,7 +178,8 @@ class ReservationCommandServiceTest {
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE.getCode()));
 
-            verify(outboxEventPort, never()).record(any(), any(), any(), any());
+            verify(outboxEventPort, never()).recordReservationCreated(any(), any(), any(), any(), any(), anyInt(), any());
+            verify(outboxEventPort, never()).recordWaitingCompleted(any(), any(), any());
         }
 
         @Test
@@ -190,7 +192,8 @@ class ReservationCommandServiceTest {
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE.getCode()));
 
-            verify(outboxEventPort, never()).record(any(), any(), any(), any());
+            verify(outboxEventPort, never()).recordReservationCreated(any(), any(), any(), any(), any(), anyInt(), any());
+            verify(outboxEventPort, never()).recordWaitingCompleted(any(), any(), any());
         }
 
         @Test
@@ -207,7 +210,8 @@ class ReservationCommandServiceTest {
             // BusinessException 전파 → 트랜잭션 롤백 (WAITING save도 취소됨)
             // 실제 롤백 검증은 통합 테스트에서 확인
             verify(waitingPort, never()).completeWaiting(any());
-            verify(outboxEventPort, never()).record(any(), any(), any(), any());
+            verify(outboxEventPort, never()).recordReservationCreated(any(), any(), any(), any(), any(), anyInt(), any());
+            verify(outboxEventPort, never()).recordWaitingCompleted(any(), any(), any());
         }
 
         @Test
@@ -220,7 +224,8 @@ class ReservationCommandServiceTest {
 
             assertThat(result.status()).isEqualTo(ReservationStatus.CONFIRMED);
             verify(reservationRepository, times(2)).save(any(Reservation.class));
-            verify(outboxEventPort, times(2)).record(any(), any(), any(), any());
+            verify(outboxEventPort).recordReservationCreated(any(), any(), any(), any(), any(), anyInt(), any());
+            verify(outboxEventPort).recordWaitingCompleted(any(), any(), any());
         }
     }
 
@@ -371,7 +376,7 @@ class ReservationCommandServiceTest {
     class Cancel {
 
         @Test
-        void 정상_취소_시_재고가_복구된다() {
+        void 정상_취소_시_재고가_복구되고_이벤트가_적재된다() {
             Reservation reservation = confirmedReservation();
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
@@ -379,6 +384,7 @@ class ReservationCommandServiceTest {
 
             assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED_PAID);
             verify(timeSlotPort).incrementStock(timeSlotId, 2);
+            verify(outboxEventPort).recordReservationCancelled(any(), any(), any(), any(), any(), anyInt(), any(), any());
         }
 
         @Test
@@ -497,13 +503,14 @@ class ReservationCommandServiceTest {
     class CheckIn {
 
         @Test
-        void 정상_체크인_시_COMPLETED_상태가_된다() {
+        void 정상_체크인_시_COMPLETED_상태가_되고_이벤트가_적재된다() {
             Reservation reservation = confirmedNow();
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
             commandService.checkIn(new CheckInCommand(reservationId, restaurantId));
 
             assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.COMPLETED);
+            verify(outboxEventPort).recordCheckInCompleted(any(), any(), any(), any());
         }
 
         @Test
