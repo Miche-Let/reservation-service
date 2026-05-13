@@ -205,7 +205,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         outboxEventPort.recordCheckInCompleted(
                 saved.getId(), saved.getRestaurantId(),
-                saved.getReservedDate(), saved.getCheckedInAt());
+                saved.getReservedDate(), command.checkedInBy(), saved.getCheckedInAt());
 
         return ReservationStatusResult.from(saved);
     }

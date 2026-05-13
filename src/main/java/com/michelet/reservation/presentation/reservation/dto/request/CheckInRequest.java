@@ -9,5 +9,8 @@ public record CheckInRequest(
     UUID reservationId,
 
     @NotNull(message = "레스토랑 ID는 필수입니다.")
-    UUID restaurantId
+    UUID restaurantId,
+
+    @NotNull(message = "체크인 처리자 ID는 필수입니다.")
+    UUID checkedInBy
 ) {}

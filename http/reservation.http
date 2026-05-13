@@ -277,7 +277,8 @@ Content-Type: application/json
 
 {
   "reservationId": "{{reservation_id}}",
-  "restaurantId": "{{restaurant_id}}"
+  "restaurantId": "{{restaurant_id}}",
+  "checkedInBy": "{{staff_id}}"
 }
 
 > {%

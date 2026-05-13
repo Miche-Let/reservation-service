@@ -83,7 +83,7 @@ class ReservationInternalControllerTest {
                     .thenReturn(new ReservationStatusResult(reservationId, ReservationStatus.COMPLETED,
                             java.time.LocalDate.of(2026, 6, 1), java.time.LocalDateTime.now()));
 
-            CheckInRequest req = new CheckInRequest(reservationId, restaurantId);
+            CheckInRequest req = new CheckInRequest(reservationId, restaurantId, userId);
 
             mockMvc.perform(patch("/internal/reservations/check-in")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -95,7 +95,7 @@ class ReservationInternalControllerTest {
 
         @Test
         void reservationId_없으면_400을_반환한다() throws Exception {
-            CheckInRequest req = new CheckInRequest(null, restaurantId);
+            CheckInRequest req = new CheckInRequest(null, restaurantId, userId);
 
             mockMvc.perform(patch("/internal/reservations/check-in")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -106,7 +106,17 @@ class ReservationInternalControllerTest {
 
         @Test
         void restaurantId_없으면_400을_반환한다() throws Exception {
-            CheckInRequest req = new CheckInRequest(reservationId, null);
+            CheckInRequest req = new CheckInRequest(reservationId, null, userId);
+
+            mockMvc.perform(patch("/internal/reservations/check-in")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(req)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void checkedInBy_없으면_400을_반환한다() throws Exception {
+            CheckInRequest req = new CheckInRequest(reservationId, restaurantId, null);
 
             mockMvc.perform(patch("/internal/reservations/check-in")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -119,7 +129,7 @@ class ReservationInternalControllerTest {
             when(commandService.checkIn(any()))
                     .thenThrow(new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
 
-            CheckInRequest req = new CheckInRequest(reservationId, restaurantId);
+            CheckInRequest req = new CheckInRequest(reservationId, restaurantId, userId);
 
             mockMvc.perform(patch("/internal/reservations/check-in")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -133,7 +143,7 @@ class ReservationInternalControllerTest {
             when(commandService.checkIn(any()))
                     .thenThrow(new BusinessException(ReservationErrorCode.INVALID_STATUS_TRANSITION));
 
-            CheckInRequest req = new CheckInRequest(reservationId, restaurantId);
+            CheckInRequest req = new CheckInRequest(reservationId, restaurantId, userId);
 
             mockMvc.perform(patch("/internal/reservations/check-in")
                             .contentType(MediaType.APPLICATION_JSON)
