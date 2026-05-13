@@ -6,6 +6,7 @@ import com.michelet.reservation.application.port.TimeSlotPort;
 import com.michelet.reservation.domain.exception.ReservationErrorCode;
 import com.michelet.reservation.infrastructure.client.TimeSlotClient;
 import com.michelet.reservation.infrastructure.client.dto.TimeSlotDeductCapacityRequest;
+import com.michelet.reservation.infrastructure.client.dto.TimeSlotRestoreCapacityRequest;
 import feign.FeignException;
 import feign.RetryableException;
 import java.util.UUID;
@@ -52,8 +53,14 @@ public class TimeSlotAdapter implements TimeSlotPort {
 
     @Override
     public void incrementStock(UUID timeSlotId, int requiredCapacity) {
-        // TODO: timeslot-service restore API 미구현 — 구현 시 차감과 동일하게 POST /deduct 역방향 or 별도 엔드포인트 호출
-        log.warn("incrementStock skipped — timeslot-service restore API not yet implemented. timeSlotId={}, requiredCapacity={}",
-                timeSlotId, requiredCapacity);
+        try {
+            timeSlotClient.incrementStock(timeSlotId, new TimeSlotRestoreCapacityRequest(requiredCapacity));
+        } catch (RetryableException e) {
+            log.warn("[timeslot] 네트워크 오류 (restore) — timeSlotId={}: {}", timeSlotId, e.getMessage());
+            throw new ExternalCallFailedException("timeslot-service 연결 불안정", e);
+        } catch (FeignException e) {
+            log.error("[timeslot] restore 오류 — timeSlotId={}, status={}", timeSlotId, e.status(), e);
+            throw new ExternalCallFailedException("timeslot-service restore 오류", e);
+        }
     }
 }
