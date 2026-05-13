@@ -49,9 +49,9 @@ public class OutboxEventAdapter implements OutboxEventPort {
 
     @Override
     public void recordCheckInCompleted(UUID reservationId, UUID restaurantId,
-                                       LocalDate visitDate, LocalDateTime checkedInAt) {
+                                       LocalDate visitDate, UUID checkedInBy, LocalDateTime checkedInAt) {
         save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_CHECKED_IN,
-                CheckInCompletedEvent.of(reservationId, restaurantId, visitDate, checkedInAt));
+                CheckInCompletedEvent.of(reservationId, restaurantId, visitDate, checkedInBy, checkedInAt));
     }
 
     private void save(UUID aggregateId, AggregateType aggregateType, String eventType, Object payload) {

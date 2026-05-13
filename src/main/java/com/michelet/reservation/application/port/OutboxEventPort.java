@@ -18,5 +18,5 @@ public interface OutboxEventPort {
     void recordWaitingCompleted(UUID waitingId, UUID reservationId, LocalDateTime occurredAt);
 
     void recordCheckInCompleted(UUID reservationId, UUID restaurantId,
-                                LocalDate visitDate, LocalDateTime checkedInAt);
+                                LocalDate visitDate, UUID checkedInBy, LocalDateTime checkedInAt);
 }

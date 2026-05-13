@@ -67,6 +67,7 @@ class ReservationCommandServiceTest {
     final UUID restaurantId = UUID.randomUUID();
     final UUID timeSlotId = UUID.randomUUID();
     final UUID reservationId = UUID.randomUUID();
+    final UUID staffId = UUID.randomUUID();
     final LocalDate futureDate   = LocalDate.now().plusDays(10);
     final LocalTime slotStartTime = LocalTime.of(19, 0);
 
@@ -507,10 +508,10 @@ class ReservationCommandServiceTest {
             Reservation reservation = confirmedNow();
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
-            commandService.checkIn(new CheckInCommand(reservationId, restaurantId));
+            commandService.checkIn(new CheckInCommand(reservationId, restaurantId, staffId));
 
             assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.COMPLETED);
-            verify(outboxEventPort).recordCheckInCompleted(any(), any(), any(), any());
+            verify(outboxEventPort).recordCheckInCompleted(any(), any(), any(), any(), any());
         }
 
         @Test
@@ -518,7 +519,7 @@ class ReservationCommandServiceTest {
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() ->
-                    commandService.checkIn(new CheckInCommand(reservationId, restaurantId)))
+                    commandService.checkIn(new CheckInCommand(reservationId, restaurantId, staffId)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.RESERVATION_NOT_FOUND.getCode()));
@@ -530,7 +531,7 @@ class ReservationCommandServiceTest {
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
             assertThatThrownBy(() ->
-                    commandService.checkIn(new CheckInCommand(reservationId, UUID.randomUUID())))
+                    commandService.checkIn(new CheckInCommand(reservationId, UUID.randomUUID(), staffId)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.RESERVATION_NOT_FOUND.getCode()));
@@ -547,7 +548,7 @@ class ReservationCommandServiceTest {
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
             assertThatThrownBy(() ->
-                    commandService.checkIn(new CheckInCommand(reservationId, restaurantId)))
+                    commandService.checkIn(new CheckInCommand(reservationId, restaurantId, staffId)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.INVALID_STATUS_TRANSITION.getCode()));

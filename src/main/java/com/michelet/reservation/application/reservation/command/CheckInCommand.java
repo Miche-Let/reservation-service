@@ -4,5 +4,6 @@ import java.util.UUID;
 
 public record CheckInCommand(
     UUID reservationId,
-    UUID restaurantId
+    UUID restaurantId,
+    UUID checkedInBy
 ) {}

@@ -10,17 +10,19 @@ public record CheckInCompletedEvent(
         UUID reservationId,
         UUID restaurantId,
         LocalDate visitDate,
+        UUID checkedInBy,
         LocalDateTime checkedInAt,
         LocalDateTime eventCreatedAt
 ) {
     public static CheckInCompletedEvent of(UUID reservationId, UUID restaurantId,
-                                           LocalDate visitDate, LocalDateTime checkedInAt) {
+                                           LocalDate visitDate, UUID checkedInBy, LocalDateTime checkedInAt) {
         return new CheckInCompletedEvent(
                 UUID.randomUUID(),
                 "CHECK_IN_COMPLETED",
                 reservationId,
                 restaurantId,
                 visitDate,
+                checkedInBy,
                 checkedInAt,
                 LocalDateTime.now()
         );

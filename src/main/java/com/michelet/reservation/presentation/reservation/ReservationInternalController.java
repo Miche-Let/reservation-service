@@ -44,7 +44,7 @@ public class ReservationInternalController {
         return ApiResponse.ok(ReservationSuccessCode.RESERVATION_CHECKED_IN,
                 ReservationStatusResponse.from(
                         commandService.checkIn(
-                                new CheckInCommand(request.reservationId(), request.restaurantId())
+                                new CheckInCommand(request.reservationId(), request.restaurantId(), request.checkedInBy())
                         )
                 ));
     }
