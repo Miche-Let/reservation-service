@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record ReservationSlotReleasedEvent(
+        UUID eventId,
         UUID reservationId,
         UUID timeSlotId,
         int capacity,

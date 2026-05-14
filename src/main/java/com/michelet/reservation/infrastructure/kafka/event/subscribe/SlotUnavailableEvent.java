@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record SlotUnavailableEvent(
+        UUID eventId,
         UUID reservationId,
         UUID timeSlotId,
         String reason,

@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record ReservationModificationVoidedEvent(
+        UUID eventId,
         UUID reservationId,
         UUID timeSlotId,
         int capacity,

@@ -1,5 +1,7 @@
 package com.michelet.reservation.presentation.reservation;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.michelet.common.auth.core.annotation.RequireRole;
 import com.michelet.common.auth.core.enums.UserRole;
 import com.michelet.common.auth.webmvc.context.UserContextHolder;
@@ -12,6 +14,7 @@ import com.michelet.reservation.application.reservation.command.ModifyReservatio
 import com.michelet.reservation.common.GatewayHeaders;
 import com.michelet.reservation.domain.enums.ReservationStatus;
 import com.michelet.reservation.domain.exception.ReservationSuccessCode;
+import com.michelet.reservation.infrastructure.idempotency.IdempotencyService;
 import com.michelet.reservation.presentation.reservation.dto.request.CreateReservationRequest;
 import com.michelet.reservation.presentation.reservation.dto.request.ModifyReservationRequest;
 import com.michelet.reservation.presentation.reservation.dto.response.ReservationResponse;
@@ -20,6 +23,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -36,6 +40,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/reservations")
 @RequiredArgsConstructor
@@ -44,14 +49,29 @@ public class ReservationController {
 
   private final ReservationCommandService commandService;
   private final ReservationQueryService queryService;
+  private final IdempotencyService idempotencyService;
+  private final ObjectMapper objectMapper;
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   @RequireRole(UserRole.USER)
   public ApiResponse<ReservationResponse> create(
       @RequestHeader(GatewayHeaders.WAITING_TOKEN) String waitingToken,
+      @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
       @RequestBody @Valid CreateReservationRequest request
   ) {
+    if (idempotencyKey != null) {
+      var cached = idempotencyService.findCachedResponse(idempotencyKey);
+      if (cached.isPresent()) {
+        try {
+          return ApiResponse.ok(ReservationSuccessCode.RESERVATION_CREATED,
+              objectMapper.readValue(cached.get(), ReservationResponse.class));
+        } catch (JsonProcessingException e) {
+          log.warn("[create] idempotency cache 역직렬화 실패 — key={}", idempotencyKey, e);
+        }
+      }
+    }
+
     UUID userId = currentUserId();
     List<CreateReservationCommand.CourseItem> courses = request.courses().stream()
         .map(c -> new CreateReservationCommand.CourseItem(c.courseId(), c.quantity(), c.unitPrice()))
@@ -63,6 +83,15 @@ public class ReservationController {
             request.guestCount(), courses
         ))
     );
+
+    if (idempotencyKey != null) {
+      try {
+        idempotencyService.cacheResponse(idempotencyKey, objectMapper.writeValueAsString(response));
+      } catch (JsonProcessingException e) {
+        log.warn("[create] idempotency cache 저장 실패 — key={}", idempotencyKey, e);
+      }
+    }
+
     return ApiResponse.ok(ReservationSuccessCode.RESERVATION_CREATED, response);
   }
 
@@ -98,8 +127,21 @@ public class ReservationController {
   @PatchMapping("/{reservationId}")
   public ApiResponse<ReservationResponse> modify(
       @PathVariable UUID reservationId,
+      @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
       @RequestBody @Valid ModifyReservationRequest request
   ) {
+    if (idempotencyKey != null) {
+      var cached = idempotencyService.findCachedResponse(idempotencyKey);
+      if (cached.isPresent()) {
+        try {
+          return ApiResponse.ok(ReservationSuccessCode.RESERVATION_MODIFIED,
+              objectMapper.readValue(cached.get(), ReservationResponse.class));
+        } catch (JsonProcessingException e) {
+          log.warn("[modify] idempotency cache 역직렬화 실패 — key={}", idempotencyKey, e);
+        }
+      }
+    }
+
     List<ModifyReservationCommand.CourseItem> courses = request.courses() == null ? null :
         request.courses().stream()
             .map(c -> new ModifyReservationCommand.CourseItem(c.courseId(), c.quantity(), c.unitPrice()))
@@ -111,6 +153,15 @@ public class ReservationController {
             request.guestCount(), courses
         ))
     );
+
+    if (idempotencyKey != null) {
+      try {
+        idempotencyService.cacheResponse(idempotencyKey, objectMapper.writeValueAsString(response));
+      } catch (JsonProcessingException e) {
+        log.warn("[modify] idempotency cache 저장 실패 — key={}", idempotencyKey, e);
+      }
+    }
+
     return ApiResponse.ok(ReservationSuccessCode.RESERVATION_MODIFIED, response);
   }
 

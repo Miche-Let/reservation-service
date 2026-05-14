@@ -21,7 +21,8 @@ public class StubTimeSlotAdapter implements TimeSlotPort {
     }
 
     @Override
-    public void incrementStock(UUID timeSlotId, int requiredCapacity) {
-        log.debug("[STUB] incrementStock skipped — timeSlotId={}, requiredCapacity={}", timeSlotId, requiredCapacity);
+    public void incrementStock(UUID timeSlotId, int requiredCapacity, String idempotencyKey) {
+        log.debug("[STUB] incrementStock skipped — timeSlotId={}, requiredCapacity={}, idempotencyKey={}",
+                timeSlotId, requiredCapacity, idempotencyKey);
     }
 }

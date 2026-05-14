@@ -129,7 +129,7 @@ class ReservationCommandServiceTest {
         void stubDefaults() {
             when(waitingPort.verifyToken(anyString()))
                     .thenReturn(new WaitingTokenResult(waitingId, true));
-            lenient().when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(
+            lenient().when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusIn(
                     any(), any(), any(), any())).thenReturn(false);
         }
 
@@ -141,7 +141,7 @@ class ReservationCommandServiceTest {
             assertThat(result.status()).isEqualTo(ReservationStatus.CONFIRMED);
             verify(reservationRepository, times(2)).save(any(Reservation.class));
             verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2), any(UUID.class));
-            verify(waitingPort).completeWaiting(eq(waitingId));
+            verify(waitingPort).completeWaiting(eq(waitingId), anyString());
             // reservation.created + waiting.completed 2개 적재
             verify(outboxEventPort).recordReservationCreated(any(), any(), any(), any(), any(), anyInt(), any());
             verify(outboxEventPort).recordWaitingCompleted(any(), any(), any());
@@ -160,7 +160,7 @@ class ReservationCommandServiceTest {
 
         @Test
         void 중복_예약이_있으면_예외를_던진다() {
-            when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(
+            when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusIn(
                     any(), any(), any(), any())).thenReturn(true);
 
             assertThatThrownBy(() -> commandService.create(createCommand()))
@@ -212,7 +212,7 @@ class ReservationCommandServiceTest {
 
             // BusinessException 전파 → 트랜잭션 롤백 (WAITING save도 취소됨)
             // 실제 롤백 검증은 통합 테스트에서 확인
-            verify(waitingPort, never()).completeWaiting(any());
+            verify(waitingPort, never()).completeWaiting(any(), any());
             verify(outboxEventPort, never()).recordReservationCreated(any(), any(), any(), any(), any(), anyInt(),
                     any());
             verify(outboxEventPort, never()).recordWaitingCompleted(any(), any(), any());
@@ -222,7 +222,7 @@ class ReservationCommandServiceTest {
         void 대기열_완료_Feign_실패_시에도_예약이_CONFIRMED_상태로_저장된다() {
             // Feign 실패해도 예약 확정 계속, outbox 이벤트가 재처리 보장
             doThrow(new RuntimeException("waiting-service unavailable"))
-                    .when(waitingPort).completeWaiting(any());
+                    .when(waitingPort).completeWaiting(any(), any());
 
             ReservationResult result = commandService.create(createCommand());
 
@@ -247,7 +247,7 @@ class ReservationCommandServiceTest {
                     null, newDate, null, null, null
             ));
 
-            verify(timeSlotPort).incrementStock(timeSlotId, 2);
+            verify(timeSlotPort).incrementStock(eq(timeSlotId), eq(2), anyString());
             verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2), any(UUID.class));
         }
 
@@ -264,7 +264,7 @@ class ReservationCommandServiceTest {
                     newSlotId, newDate, newStartTime, null, null
             ));
 
-            verify(timeSlotPort).incrementStock(timeSlotId, 2);
+            verify(timeSlotPort).incrementStock(eq(timeSlotId), eq(2), anyString());
             verify(timeSlotPort).decrementStock(eq(newSlotId), eq(2), any(UUID.class));
         }
 
@@ -292,7 +292,7 @@ class ReservationCommandServiceTest {
                     null, null, null, null, null  // 모든 필드 미변경
             ));
 
-            verify(timeSlotPort, never()).incrementStock(any(), anyInt());
+            verify(timeSlotPort, never()).incrementStock(any(), anyInt(), anyString());
             verify(timeSlotPort, never()).decrementStock(any(), anyInt(), any());
         }
 
@@ -365,7 +365,7 @@ class ReservationCommandServiceTest {
             Reservation reservation = confirmedReservation();
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
             UUID newSlotId = UUID.randomUUID();
-            when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(
+            when(reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusIn(
                     eq(userId), eq(newSlotId), eq(futureDate), any())).thenReturn(true);
 
             assertThatThrownBy(() -> commandService.modify(new ModifyReservationCommand(
@@ -387,7 +387,7 @@ class ReservationCommandServiceTest {
             commandService.cancel(CancelReservationCommand.of(reservationId, userId, "USER"));
 
             assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED_PAID);
-            verify(timeSlotPort).incrementStock(timeSlotId, 2);
+            verify(timeSlotPort).incrementStock(eq(timeSlotId), eq(2), anyString());
             verify(outboxEventPort).recordReservationCancelled(any(), any(), any(), any(), any(), anyInt(), any(),
                     any());
         }
@@ -437,7 +437,7 @@ class ReservationCommandServiceTest {
             Reservation reservation = confirmedReservation();
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
             doThrow(new RuntimeException("timeslot unreachable"))
-                    .when(timeSlotPort).incrementStock(any(), anyInt());
+                    .when(timeSlotPort).incrementStock(any(), anyInt(), anyString());
 
             commandService.cancel(CancelReservationCommand.of(reservationId, userId, "USER"));
 
@@ -470,7 +470,7 @@ class ReservationCommandServiceTest {
             commandService.delete(new DeleteReservationCommand(reservationId, userId, "USER"));
 
             verify(reservationRepository).delete(eq(reservationId), eq(userId));
-            verify(timeSlotPort).incrementStock(eq(timeSlotId), eq(2));
+            verify(timeSlotPort).incrementStock(eq(timeSlotId), eq(2), anyString());
             verify(outboxEventPort).recordReservationDeleted(any(), any(), any(), any(), anyInt(), any());
         }
 
@@ -487,7 +487,7 @@ class ReservationCommandServiceTest {
             commandService.delete(new DeleteReservationCommand(reservationId, userId, "USER"));
 
             verify(reservationRepository).delete(eq(reservationId), eq(userId));
-            verify(timeSlotPort, never()).incrementStock(any(), anyInt());
+            verify(timeSlotPort, never()).incrementStock(any(), anyInt(), anyString());
             verify(outboxEventPort, never()).recordReservationDeleted(any(), any(), any(), any(), anyInt(), any());
         }
 
@@ -504,7 +504,7 @@ class ReservationCommandServiceTest {
             commandService.delete(new DeleteReservationCommand(reservationId, userId, "USER"));
 
             verify(reservationRepository).delete(eq(reservationId), eq(userId));
-            verify(timeSlotPort, never()).incrementStock(any(), anyInt());
+            verify(timeSlotPort, never()).incrementStock(any(), anyInt(), anyString());
             verify(outboxEventPort, never()).recordReservationDeleted(any(), any(), any(), any(), anyInt(), any());
         }
 
@@ -513,7 +513,7 @@ class ReservationCommandServiceTest {
             Reservation reservation = confirmedReservation();
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
             doThrow(new RuntimeException("timeslot unreachable"))
-                    .when(timeSlotPort).incrementStock(any(), anyInt());
+                    .when(timeSlotPort).incrementStock(any(), anyInt(), anyString());
 
             commandService.delete(new DeleteReservationCommand(reservationId, userId, "USER"));
 

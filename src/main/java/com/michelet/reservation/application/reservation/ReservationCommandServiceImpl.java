@@ -54,7 +54,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         checkDuplicate(command.userId(), command.timeSlotId(), command.reservedDate());
 
-        LocalDateTime noshowDeadline = LocalDateTime.of(command.reservedDate(), command.slotStartTime()).plusMinutes(30);
+        LocalDateTime noshowDeadline = LocalDateTime.of(command.reservedDate(), command.slotStartTime())
+                .plusMinutes(30);
 
         // WAITING 상태로 먼저 저장 — feign 호출 전 예약 레코드 확보
         Reservation reservation = Reservation.create(
@@ -89,7 +90,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         // 실패해도 예약 확정 계속 진행 (outbox 이벤트가 재처리 보장)
         // waiting-service는 Feign + Kafka 양쪽에서 수신할 수 있으므로 멱등 처리 필수
         try {
-            waitingPort.completeWaiting(tokenResult.waitingId());
+            waitingPort.completeWaiting(tokenResult.waitingId(),
+                    "complete-waiting:" + tokenResult.waitingId());
         } catch (RuntimeException e) {
             log.warn("[create] 대기열 완료 Feign 호출 실패 — outbox 이벤트로 재처리 보장 (waitingId={})", tokenResult.waitingId(), e);
         }
@@ -122,7 +124,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         Integer newGuestCount =
                 command.guestCount() != null ? command.guestCount() : reservation.getGuestCount().value();
 
-        LocalDateTime newNoshowDeadline = resolveNoshowDeadline(reservation, command.reservedDate(), command.slotStartTime(), newDate);
+        LocalDateTime newNoshowDeadline = resolveNoshowDeadline(reservation, command.reservedDate(),
+                command.slotStartTime(), newDate);
 
         boolean slotChanged = !newTimeSlotId.equals(originalTimeSlotId) || !newDate.equals(originalDate);
         boolean guestCountChanged = newGuestCount != originalGuestCount;
@@ -151,9 +154,10 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                         command.reservationId(), newTimeSlotId, newGuestCount, LocalDateTime.now());
                 throw new BusinessException(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE);
             }
-            // 기존 슬롯 복구 — Feign 실패 시에만 outbox 이벤트 발행 (Feign 성공 시 이중 복구 방지)
+            // 슬롯 복구 — Feign 실패 시에만 outbox 이벤트 발행 (Feign 성공 시 이중 복구 방지)
             try {
-                timeSlotPort.incrementStock(originalTimeSlotId, originalGuestCount);
+                timeSlotPort.incrementStock(originalTimeSlotId, originalGuestCount,
+                        "restore:" + originalTimeSlotId + ":" + command.reservationId() + ":modify-slot");
             } catch (Exception e) {
                 log.warn("[modify] 기존 슬롯 복구 Feign 실패 — reservation.slot.released outbox 이벤트로 비동기 복구 예정 " +
                         "(reservationId={}, timeSlotId={})", command.reservationId(), originalTimeSlotId, e);
@@ -177,7 +181,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
             } else {
                 // 인원 감소 — Feign 실패 시에만 outbox 이벤트 발행 (이중 복구 방지)
                 try {
-                    timeSlotPort.incrementStock(originalTimeSlotId, -delta);
+                    timeSlotPort.incrementStock(originalTimeSlotId, -delta,
+                            "restore:" + originalTimeSlotId + ":" + command.reservationId() + ":modify-delta");
                 } catch (Exception e) {
                     log.warn("[modify] 인원 감소 슬롯 복구 Feign 실패 — reservation.slot.released outbox 이벤트로 비동기 복구 예정 " +
                             "(reservationId={}, timeSlotId={})", command.reservationId(), originalTimeSlotId, e);
@@ -205,7 +210,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         // Feign 복구 실패 시 예외 전파하지 않음 — reservation.cancelled outbox 이벤트를
         // timeslot-service가 소비하여 비동기 복구
         try {
-            timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
+            timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value(),
+                    "restore:" + reservation.getTimeSlotId() + ":" + reservation.getId() + ":cancel");
         } catch (Exception e) {
             log.warn("[cancel] 슬롯 복구 Feign 실패 — reservation.cancelled outbox 이벤트로 비동기 복구 예정 " +
                     "(reservationId={}, timeSlotId={})", saved.getId(), saved.getTimeSlotId(), e);
@@ -223,7 +229,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                     reservation.getId(), reservation.getUserId(), reservation.getRestaurantId(),
                     reservation.getTimeSlotId(), reservation.getGuestCount().value(), LocalDateTime.now());
             try {
-                timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value());
+                timeSlotPort.incrementStock(reservation.getTimeSlotId(), reservation.getGuestCount().value(),
+                        "restore:" + reservation.getTimeSlotId() + ":" + reservation.getId() + ":delete");
             } catch (Exception e) {
                 log.warn("[delete] 슬롯 복구 Feign 실패 — reservation.deleted outbox 이벤트로 비동기 복구 예정 " +
                         "(reservationId={}, timeSlotId={})", reservation.getId(), reservation.getTimeSlotId(), e);
@@ -251,8 +258,9 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     }
 
     private void checkDuplicate(UUID userId, UUID timeSlotId, LocalDate reservedDate) {
-        if (reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(
-                userId, timeSlotId, reservedDate, ReservationStatus.CONFIRMED)) {
+        if (reservationRepository.existsByUserIdAndTimeSlotIdAndReservedDateAndStatusIn(
+                userId, timeSlotId, reservedDate,
+                List.of(ReservationStatus.WAITING, ReservationStatus.CONFIRMED))) {
             throw new BusinessException(ReservationErrorCode.DUPLICATE_RESERVATION);
         }
     }
@@ -293,10 +301,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     }
 
     /**
-     * 코스 목록 수정 규칙:
-     * - courses == null : 기존 코스 유지 (DB 재조회)
-     * - courses == [] : 전체 삭제
-     * - courses != [] : 전체 교체 (삭제 후 새로 저장)
+     * 코스 목록 수정 규칙: - courses == null : 기존 코스 유지 (DB 재조회) - courses == [] : 전체 삭제 - courses != [] : 전체 교체 (삭제 후 새로 저장)
      */
     private List<ReservationCourse> updateCourses(UUID reservationId, List<ModifyReservationCommand.CourseItem> items) {
         if (items == null) {

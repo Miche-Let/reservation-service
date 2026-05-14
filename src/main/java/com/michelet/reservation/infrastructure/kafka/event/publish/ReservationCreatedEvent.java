@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record ReservationCreatedEvent(
+    UUID eventId,
     UUID reservationId,
     UUID userId,
     UUID restaurantId,
