@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 public interface OutboxEventJpaRepository extends JpaRepository<OutboxEventJpaEntity, UUID> {
 
     @Query(
-            value = "SELECT * FROM p_outbox_events"
+            value = "SELECT * FROM reservation_service.p_outbox_events"
                     + " WHERE status = 'PENDING'"
                     + " ORDER BY created_at"
                     + " LIMIT 50"
