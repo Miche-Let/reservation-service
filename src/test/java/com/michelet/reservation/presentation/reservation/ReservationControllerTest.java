@@ -3,6 +3,8 @@ package com.michelet.reservation.presentation.reservation;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -22,6 +24,7 @@ import com.michelet.reservation.application.reservation.ReservationCommandServic
 import com.michelet.reservation.application.reservation.ReservationQueryService;
 import com.michelet.reservation.application.reservation.result.ReservationResult;
 import com.michelet.reservation.application.reservation.result.ReservationSummaryResult;
+import com.michelet.reservation.presentation.reservation.dto.response.ReservationResponse;
 import com.michelet.reservation.domain.enums.ReservationStatus;
 import com.michelet.reservation.domain.exception.ReservationErrorCode;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -147,6 +150,27 @@ class ReservationControllerTest {
         }
 
         @Test
+        void Idempotency_Key_캐시_히트_시_create를_호출하지_않고_캐시된_응답을_반환한다() throws Exception {
+            String idempotencyKey = "test-idem-key";
+            String scopedKey = "reservation:create:" + userId + ":" + idempotencyKey;
+            ReservationResponse cached = ReservationResponse.from(reservationResult());
+            when(idempotencyService.findCachedResponse(scopedKey))
+                    .thenReturn(Optional.of(objectMapper.writeValueAsString(cached)));
+
+            mockMvc.perform(post("/api/v1/reservations")
+                            .header("X-User-Id", userId)
+                            .header("X-User-Role", "USER")
+                            .header("X-Waiting-Token", "valid-token")
+                            .header("Idempotency-Key", idempotencyKey)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(validCreateRequest())))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.reservationId").value(reservationId.toString()));
+
+            verify(commandService, never()).create(any());
+        }
+
+        @Test
         void 대기열_토큰_유효하지_않으면_403을_반환한다() throws Exception {
             when(commandService.create(any()))
                     .thenThrow(new BusinessException(ReservationErrorCode.INVALID_WAITING_TOKEN));
@@ -259,6 +283,28 @@ class ReservationControllerTest {
                             .content(objectMapper.writeValueAsString(req)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.reservationId").value(reservationId.toString()));
+        }
+
+        @Test
+        void Idempotency_Key_캐시_히트_시_modify를_호출하지_않고_캐시된_응답을_반환한다() throws Exception {
+            String idempotencyKey = "test-idem-key";
+            String scopedKey = "reservation:modify:" + reservationId + ":" + userId + ":" + idempotencyKey;
+            ReservationResponse cached = ReservationResponse.from(reservationResult());
+            when(idempotencyService.findCachedResponse(scopedKey))
+                    .thenReturn(Optional.of(objectMapper.writeValueAsString(cached)));
+
+            ModifyReservationRequest req = new ModifyReservationRequest(null, null, null, null, null);
+
+            mockMvc.perform(patch("/api/v1/reservations/{id}", reservationId)
+                            .header("X-User-Id", userId)
+                            .header("X-User-Role", "USER")
+                            .header("Idempotency-Key", idempotencyKey)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(req)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.reservationId").value(reservationId.toString()));
+
+            verify(commandService, never()).modify(any());
         }
 
         @Test
