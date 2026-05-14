@@ -12,6 +12,8 @@ public final class KafkaTopics {
     public static final String RESERVATION_MODIFICATION_VOIDED = "reservation.modification.voided";
     public static final String RESERVATION_SLOT_RELEASED       = "reservation.slot.released";
 
+    public static final String RESERVATION_NO_SHOW = "reservation.no-show";
+
     public static final String SLOT_DEDUCTED    = "slot.deducted";
     public static final String SLOT_UNAVAILABLE = "slot.unavailable";
 

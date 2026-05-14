@@ -411,6 +411,37 @@ X-User-Role: USER
 
 ###
 
+### [NoShow] 9. No-Show 자동 전이 수동 검증
+# [목적]   noshowDeadline이 지난 CONFIRMED 예약이 스케줄러에 의해 NO_SHOW로 전이되는지 확인
+# [전제]   1번 예약이 CONFIRMED 상태로 존재해야 함 (체크인하지 않은 상태)
+#
+# [Step 1] DB에서 noshow_deadline을 현재 시각 기준 과거로 수동 조작
+#   -- psql 또는 DataGrip 등에서 실행:
+#   UPDATE reservation_service.p_reservations
+#   SET noshow_deadline = NOW() - INTERVAL '1 minute'
+#   WHERE id = '<reservation_id>'
+#     AND status = 'CONFIRMED';
+#
+# [Step 2] 스케줄러가 실행될 때까지 최대 60초 대기 (noshow.scheduler.fixed-delay-ms=60000)
+#
+# [Step 3] 아래 요청으로 상태 변경 확인 (status=NO_SHOW 기대)
+GET {{base_url}}/api/v1/reservations/{{reservation_id}}
+X-User-Id: {{user_id}}
+X-User-Role: USER
+
+> {%
+    client.test("200 OK", function () {
+        client.assert(response.status === 200, "Expected 200, got " + response.status);
+    });
+    client.test("status NO_SHOW (스케줄러 전이 완료)", function () {
+        client.assert(response.body.data.status === "NO_SHOW",
+            "Expected status=NO_SHOW, got " + response.body.data.status +
+            " (스케줄러 주기 60초 대기 후 재시도)");
+    });
+%}
+
+###
+
 ### [에러 케이스] 취소 기한 초과 예약 삭제 시도
 # [플로우] 취소 기한이 지난 CONFIRMED 예약을 soft-delete → 슬롯 재고 반환 없이 삭제
 # [데이터] reservation_id (체크인 완료된 예약이면 COMPLETED 상태로도 삭제 가능)
