@@ -34,11 +34,14 @@
 # [멱등성] Idempotency-Key 헤더(선택) — 동일 키로 재요청 시 저장된 응답 그대로 반환 (DB/Feign 재처리 없음)
 #          키 없이 요청 시 기존 동작 그대로 처리됨 (하위 호환)
 # @name createReservation
+< {%
+    client.global.set("idem_key", Math.random().toString(36).substring(2) + "-" + Date.now());
+%}
 POST {{base_url}}/api/v1/reservations
 X-User-Id: {{user_id}}
 X-User-Role: USER
 X-Waiting-Token: {{user_id}}:{{restaurant_id}}
-Idempotency-Key: {{$uuid}}
+Idempotency-Key: {{idem_key}}
 Content-Type: application/json
 
 {
@@ -165,10 +168,13 @@ X-User-Role: USER
 # [데이터] guestCount: 2 → 3, 나머지 필드 null (수정 안 함)
 # [기대]   200 OK, guestCount=3 반영
 # [멱등성] Idempotency-Key 헤더(선택) — 동일 키 재요청 시 캐시된 수정 결과 반환
+< {%
+    client.global.set("idem_key_modify", Math.random().toString(36).substring(2) + "-" + Date.now());
+%}
 PATCH {{base_url}}/api/v1/reservations/{{reservation_id}}
 X-User-Id: {{user_id}}
 X-User-Role: USER
-Idempotency-Key: {{$uuid}}
+Idempotency-Key: {{idem_key_modify}}
 Content-Type: application/json
 
 {
