@@ -7,6 +7,12 @@
 #   - 환경: http-client.env.json > local 선택
 #   - feign 의존 서비스(timeslot-service, waiting-service)가 동작 중이어야 함
 #
+# ⚠ 재실행 시 주의
+#   테스트 4-1에서 reservedDate가 2026-06-10으로 변경된다.
+#   이전 실행이 체크인(6번) 전에 중단되면 CONFIRMED 예약이 남아,
+#   다음 실행의 4-1에서 중복 예약(409)이 발생할 수 있다.
+#   재실행 전에 예약 테이블을 초기화하거나 테스트를 6번까지 완주한 후 재실행할 것.
+#
 # 예약 상태 정의
 #   WAITING        — 예약 저장 완료, 타임슬롯 점유 확인 전 (create() 초기 상태)
 #   CONFIRMED      — feign 점유 성공 확인 완료, 예약 확정 (슬롯 선점 중)
