@@ -31,11 +31,14 @@
 #          → feign decrementStock 성공 → confirm() 호출 → CONFIRMED 전환 → 이벤트 발행
 # [데이터] userId·restaurantId가 토큰에 바인딩된 사용자, 2026-06-01 18:00 슬롯, 2인, 코스 1개(5만원)
 # [기대]   201 Created, status=CONFIRMED (WAITING → CONFIRMED 전환 완료), reservation_id 전역변수 저장
+# [멱등성] Idempotency-Key 헤더(선택) — 동일 키로 재요청 시 저장된 응답 그대로 반환 (DB/Feign 재처리 없음)
+#          키 없이 요청 시 기존 동작 그대로 처리됨 (하위 호환)
 # @name createReservation
 POST {{base_url}}/api/v1/reservations
 X-User-Id: {{user_id}}
 X-User-Role: USER
 X-Waiting-Token: {{user_id}}:{{restaurant_id}}
+Idempotency-Key: {{$uuid}}
 Content-Type: application/json
 
 {
@@ -63,6 +66,44 @@ Content-Type: application/json
     if (response.status === 201) {
         client.global.set("reservation_id", response.body.data.reservationId);
     }
+%}
+
+###
+
+### 1-1. 예약 등록 — 멱등성 검증 (동일 키 재요청)
+# [플로우] 1번과 동일한 Idempotency-Key로 재요청 → Redis 캐시 히트 → 저장된 응답 반환
+# [기대]   201 Created, 1번과 동일한 reservationId 반환 (새 예약 생성 없음)
+# [주의]   1번 요청의 Idempotency-Key를 {{idem_key}}에 수동으로 복사 후 실행
+POST {{base_url}}/api/v1/reservations
+X-User-Id: {{user_id}}
+X-User-Role: USER
+X-Waiting-Token: {{user_id}}:{{restaurant_id}}
+Idempotency-Key: {{idem_key}}
+Content-Type: application/json
+
+{
+  "restaurantId": "{{restaurant_id}}",
+  "timeSlotId": "{{time_slot_id}}",
+  "reservedDate": "2026-06-01",
+  "slotStartTime": "18:00:00",
+  "guestCount": 2,
+  "courses": [
+    {
+      "courseId": "{{course_id}}",
+      "quantity": 1,
+      "unitPrice": 50000
+    }
+  ]
+}
+
+> {%
+    client.test("201 Created (캐시 반환)", function () {
+        client.assert(response.status === 201, "Expected 201, got " + response.status);
+    });
+    client.test("reservationId 동일 (중복 생성 없음)", function () {
+        client.assert(response.body.data.reservationId === client.global.get("reservation_id"),
+            "Expected same reservationId");
+    });
 %}
 
 ###
@@ -123,9 +164,11 @@ X-User-Role: USER
 # [플로우] 슬롯/날짜 미변경 → 재고 조정 없이 guestCount만 3으로 갱신
 # [데이터] guestCount: 2 → 3, 나머지 필드 null (수정 안 함)
 # [기대]   200 OK, guestCount=3 반영
+# [멱등성] Idempotency-Key 헤더(선택) — 동일 키 재요청 시 캐시된 수정 결과 반환
 PATCH {{base_url}}/api/v1/reservations/{{reservation_id}}
 X-User-Id: {{user_id}}
 X-User-Role: USER
+Idempotency-Key: {{$uuid}}
 Content-Type: application/json
 
 {
