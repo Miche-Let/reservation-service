@@ -99,7 +99,7 @@ public class ReservationController {
   @RequireRole(UserRole.USER)
   public ApiResponse<Page<ReservationSummaryResponse>> getMyReservations(
       @RequestParam(required = false) ReservationStatus status,
-      @PageableDefault(size = 10) Pageable pageable
+      @PageableDefault Pageable pageable
   ) {
     Page<ReservationSummaryResponse> response = queryService.getList(currentUserId(), status, pageable)
         .map(ReservationSummaryResponse::from);

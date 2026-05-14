@@ -18,9 +18,6 @@ public interface ReservationJpaStore extends JpaRepository<ReservationJpaEntity,
     Page<ReservationJpaEntity> findAllByUserIdAndStatus(UUID userId, ReservationStatus status, Pageable pageable);
 
 
-    boolean existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(UUID userId, UUID timeSlotId, LocalDate reservedDate,
-                                                               ReservationStatus status);
-
     boolean existsByUserIdAndTimeSlotIdAndReservedDateAndStatusIn(UUID userId, UUID timeSlotId,
                                                                   LocalDate reservedDate,
                                                                   Collection<ReservationStatus> statuses);
