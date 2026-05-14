@@ -62,7 +62,7 @@ public class ReservationController {
   ) {
     UUID userId = currentUserId();
     if (idempotencyKey != null) {
-      String scopedKey = userId + ":" + idempotencyKey;
+      String scopedKey = "reservation:create:" + userId + ":" + idempotencyKey;
       var cached = idempotencyService.findCachedResponse(scopedKey);
       if (cached.isPresent()) {
         try {
@@ -86,7 +86,7 @@ public class ReservationController {
     );
 
     if (idempotencyKey != null) {
-      String scopedKey = userId + ":" + idempotencyKey;
+      String scopedKey = "reservation:create:" + userId + ":" + idempotencyKey;
       try {
         idempotencyService.cacheResponse(scopedKey, objectMapper.writeValueAsString(response));
       } catch (JsonProcessingException e) {
@@ -134,7 +134,7 @@ public class ReservationController {
   ) {
     UUID userId = currentUserId();
     if (idempotencyKey != null) {
-      String scopedKey = userId + ":" + idempotencyKey;
+      String scopedKey = "reservation:modify:" + reservationId + ":" + userId + ":" + idempotencyKey;
       var cached = idempotencyService.findCachedResponse(scopedKey);
       if (cached.isPresent()) {
         try {
@@ -159,7 +159,7 @@ public class ReservationController {
     );
 
     if (idempotencyKey != null) {
-      String scopedKey = userId + ":" + idempotencyKey;
+      String scopedKey = "reservation:modify:" + reservationId + ":" + userId + ":" + idempotencyKey;
       try {
         idempotencyService.cacheResponse(scopedKey, objectMapper.writeValueAsString(response));
       } catch (JsonProcessingException e) {
