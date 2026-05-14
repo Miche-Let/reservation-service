@@ -53,14 +53,6 @@ public class ReservationJpaRepository implements ReservationRepository {
     }
 
     @Override
-    public boolean existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(
-            UUID userId, UUID timeSlotId, LocalDate reservedDate, ReservationStatus status
-    ) {
-        return jpaStore.existsByUserIdAndTimeSlotIdAndReservedDateAndStatus(userId, timeSlotId, reservedDate,
-                status);
-    }
-
-    @Override
     public boolean existsByUserIdAndTimeSlotIdAndReservedDateAndStatusIn(
             UUID userId, UUID timeSlotId, LocalDate reservedDate, List<ReservationStatus> statuses
     ) {
