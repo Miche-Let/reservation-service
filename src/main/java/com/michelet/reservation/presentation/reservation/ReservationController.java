@@ -60,19 +60,20 @@ public class ReservationController {
       @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
       @RequestBody @Valid CreateReservationRequest request
   ) {
+    UUID userId = currentUserId();
     if (idempotencyKey != null) {
-      var cached = idempotencyService.findCachedResponse(idempotencyKey);
+      String scopedKey = userId + ":" + idempotencyKey;
+      var cached = idempotencyService.findCachedResponse(scopedKey);
       if (cached.isPresent()) {
         try {
           return ApiResponse.ok(ReservationSuccessCode.RESERVATION_CREATED,
               objectMapper.readValue(cached.get(), ReservationResponse.class));
         } catch (JsonProcessingException e) {
-          log.warn("[create] idempotency cache 역직렬화 실패 — key={}", idempotencyKey, e);
+          log.warn("[create] idempotency cache 역직렬화 실패 — key={}", scopedKey, e);
         }
       }
     }
 
-    UUID userId = currentUserId();
     List<CreateReservationCommand.CourseItem> courses = request.courses().stream()
         .map(c -> new CreateReservationCommand.CourseItem(c.courseId(), c.quantity(), c.unitPrice()))
         .toList();
@@ -85,10 +86,11 @@ public class ReservationController {
     );
 
     if (idempotencyKey != null) {
+      String scopedKey = userId + ":" + idempotencyKey;
       try {
-        idempotencyService.cacheResponse(idempotencyKey, objectMapper.writeValueAsString(response));
+        idempotencyService.cacheResponse(scopedKey, objectMapper.writeValueAsString(response));
       } catch (JsonProcessingException e) {
-        log.warn("[create] idempotency cache 저장 실패 — key={}", idempotencyKey, e);
+        log.warn("[create] idempotency cache 저장 실패 — key={}", scopedKey, e);
       }
     }
 
@@ -99,7 +101,7 @@ public class ReservationController {
   @RequireRole(UserRole.USER)
   public ApiResponse<Page<ReservationSummaryResponse>> getMyReservations(
       @RequestParam(required = false) ReservationStatus status,
-      @PageableDefault Pageable pageable
+      @PageableDefault(size = 10) Pageable pageable
   ) {
     Page<ReservationSummaryResponse> response = queryService.getList(currentUserId(), status, pageable)
         .map(ReservationSummaryResponse::from);
@@ -130,14 +132,16 @@ public class ReservationController {
       @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
       @RequestBody @Valid ModifyReservationRequest request
   ) {
+    UUID userId = currentUserId();
     if (idempotencyKey != null) {
-      var cached = idempotencyService.findCachedResponse(idempotencyKey);
+      String scopedKey = userId + ":" + idempotencyKey;
+      var cached = idempotencyService.findCachedResponse(scopedKey);
       if (cached.isPresent()) {
         try {
           return ApiResponse.ok(ReservationSuccessCode.RESERVATION_MODIFIED,
               objectMapper.readValue(cached.get(), ReservationResponse.class));
         } catch (JsonProcessingException e) {
-          log.warn("[modify] idempotency cache 역직렬화 실패 — key={}", idempotencyKey, e);
+          log.warn("[modify] idempotency cache 역직렬화 실패 — key={}", scopedKey, e);
         }
       }
     }
@@ -148,17 +152,18 @@ public class ReservationController {
             .toList();
     ReservationResponse response = ReservationResponse.from(
         commandService.modify(new ModifyReservationCommand(
-            reservationId, currentUserId(), currentUserRole(),
+            reservationId, userId, currentUserRole(),
             request.timeSlotId(), request.reservedDate(), request.slotStartTime(),
             request.guestCount(), courses
         ))
     );
 
     if (idempotencyKey != null) {
+      String scopedKey = userId + ":" + idempotencyKey;
       try {
-        idempotencyService.cacheResponse(idempotencyKey, objectMapper.writeValueAsString(response));
+        idempotencyService.cacheResponse(scopedKey, objectMapper.writeValueAsString(response));
       } catch (JsonProcessingException e) {
-        log.warn("[modify] idempotency cache 저장 실패 — key={}", idempotencyKey, e);
+        log.warn("[modify] idempotency cache 저장 실패 — key={}", scopedKey, e);
       }
     }
 
