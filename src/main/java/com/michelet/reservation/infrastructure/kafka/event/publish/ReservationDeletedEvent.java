@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record ReservationDeletedEvent(
+        UUID eventId,
         UUID reservationId,
         UUID userId,
         UUID restaurantId,

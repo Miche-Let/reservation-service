@@ -52,9 +52,10 @@ public class TimeSlotAdapter implements TimeSlotPort {
     }
 
     @Override
-    public void incrementStock(UUID timeSlotId, int requiredCapacity) {
+    public void incrementStock(UUID timeSlotId, int requiredCapacity, String idempotencyKey) {
         try {
-            timeSlotClient.incrementStock(timeSlotId, new TimeSlotRestoreCapacityRequest(requiredCapacity));
+            timeSlotClient.incrementStock(timeSlotId, idempotencyKey,
+                    new TimeSlotRestoreCapacityRequest(requiredCapacity));
         } catch (RetryableException e) {
             log.warn("[timeslot] 네트워크 오류 (restore) — timeSlotId={}: {}", timeSlotId, e.getMessage());
             throw new ExternalCallFailedException("timeslot-service 연결 불안정", e);

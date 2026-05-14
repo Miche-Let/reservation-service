@@ -4,5 +4,5 @@ import java.util.UUID;
 
 public interface WaitingPort {
     WaitingTokenResult verifyToken(String token);
-    void completeWaiting(UUID waitingId);
+    void completeWaiting(UUID waitingId, String idempotencyKey);
 }

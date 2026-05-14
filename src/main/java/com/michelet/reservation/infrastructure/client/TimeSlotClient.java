@@ -28,6 +28,7 @@ public interface TimeSlotClient {
     @PatchMapping("/internal/v1/time-slots/{timeSlotId}/restore")
     ApiResponse<Void> incrementStock(
             @PathVariable("timeSlotId") UUID timeSlotId,
+            @RequestHeader("X-Idempotency-Key") String idempotencyKey,
             @RequestBody TimeSlotRestoreCapacityRequest request
     );
 }

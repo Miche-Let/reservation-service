@@ -34,7 +34,7 @@ public class OutboxEventAdapter implements OutboxEventPort {
                                          UUID timeSlotId, LocalDate reservedDate, int guestCount,
                                          LocalDateTime occurredAt) {
         save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_CREATED,
-                new ReservationCreatedEvent(reservationId, userId, restaurantId,
+                new ReservationCreatedEvent(UUID.randomUUID(), reservationId, userId, restaurantId,
                         timeSlotId, reservedDate, guestCount, occurredAt));
     }
 
@@ -43,21 +43,21 @@ public class OutboxEventAdapter implements OutboxEventPort {
                                            UUID timeSlotId, LocalDate reservedDate, int guestCount,
                                            ReservationStatus cancelledStatus, LocalDateTime occurredAt) {
         save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_CANCELLED,
-                new ReservationCancelledEvent(reservationId, userId, restaurantId,
+                new ReservationCancelledEvent(UUID.randomUUID(), reservationId, userId, restaurantId,
                         timeSlotId, reservedDate, guestCount, cancelledStatus.name(), occurredAt));
     }
 
     @Override
     public void recordWaitingCompleted(UUID waitingId, UUID reservationId, LocalDateTime occurredAt) {
         save(waitingId, AggregateType.WAITING, KafkaTopics.WAITING_COMPLETED,
-                new WaitingCompletedEvent(waitingId, reservationId, occurredAt));
+                new WaitingCompletedEvent(UUID.randomUUID(), waitingId, reservationId, occurredAt));
     }
 
     @Override
     public void recordReservationDeleted(UUID reservationId, UUID userId, UUID restaurantId,
                                          UUID timeSlotId, int guestCount, LocalDateTime occurredAt) {
         save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_DELETED,
-                new ReservationDeletedEvent(reservationId, userId, restaurantId,
+                new ReservationDeletedEvent(UUID.randomUUID(), reservationId, userId, restaurantId,
                         timeSlotId, guestCount, occurredAt));
     }
 
@@ -73,7 +73,7 @@ public class OutboxEventAdapter implements OutboxEventPort {
     public void recordReservationCreationVoided(UUID reservationId, UUID timeSlotId, int guestCount,
                                                 LocalDateTime occurredAt) {
         save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_CREATION_VOIDED,
-                new ReservationCreationVoidedEvent(reservationId, timeSlotId, guestCount, occurredAt));
+                new ReservationCreationVoidedEvent(UUID.randomUUID(), reservationId, timeSlotId, guestCount, occurredAt));
     }
 
     @Override
@@ -81,14 +81,14 @@ public class OutboxEventAdapter implements OutboxEventPort {
     public void recordReservationModificationVoided(UUID reservationId, UUID timeSlotId, int capacity,
                                                     LocalDateTime occurredAt) {
         save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_MODIFICATION_VOIDED,
-                new ReservationModificationVoidedEvent(reservationId, timeSlotId, capacity, occurredAt));
+                new ReservationModificationVoidedEvent(UUID.randomUUID(), reservationId, timeSlotId, capacity, occurredAt));
     }
 
     @Override
     public void recordSlotReleased(UUID reservationId, UUID timeSlotId, int capacity,
                                    LocalDateTime occurredAt) {
         save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_SLOT_RELEASED,
-                new ReservationSlotReleasedEvent(reservationId, timeSlotId, capacity, occurredAt));
+                new ReservationSlotReleasedEvent(UUID.randomUUID(), reservationId, timeSlotId, capacity, occurredAt));
     }
 
     private void save(UUID aggregateId, AggregateType aggregateType, String eventType, Object payload) {

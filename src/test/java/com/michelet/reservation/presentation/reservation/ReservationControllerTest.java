@@ -16,6 +16,7 @@ import com.michelet.common.auth.core.enums.UserRole;
 import com.michelet.common.auth.webmvc.context.UserContextHolder;
 import com.michelet.common.exception.BusinessException;
 import com.michelet.common.exception.GlobalExceptionHandler;
+import com.michelet.reservation.infrastructure.idempotency.IdempotencyService;
 import com.michelet.reservation.presentation.ReservationExceptionHandler;
 import com.michelet.reservation.application.reservation.ReservationCommandService;
 import com.michelet.reservation.application.reservation.ReservationQueryService;
@@ -30,6 +31,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +57,8 @@ class ReservationControllerTest {
     ReservationCommandService commandService;
     @MockitoBean
     ReservationQueryService queryService;
+    @MockitoBean
+    IdempotencyService idempotencyService;
 
     final UUID userId = UUID.randomUUID();
     final UUID restaurantId = UUID.randomUUID();
@@ -66,6 +70,7 @@ class ReservationControllerTest {
     @BeforeEach
     void setUpUserContext() {
         UserContextHolder.set(new UserContext(userId.toString(), UserRole.USER));
+        when(idempotencyService.findCachedResponse(any())).thenReturn(Optional.empty());
     }
 
     @AfterEach

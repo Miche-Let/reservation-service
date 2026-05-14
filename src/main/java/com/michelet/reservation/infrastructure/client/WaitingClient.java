@@ -7,6 +7,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @FeignClient(name = "waiting-service", url = "${feign.waiting-service.url}")
@@ -19,6 +20,7 @@ public interface WaitingClient {
 
     @DeleteMapping("/internal/waitings/{waitingId}/complete")
     ApiResponse<Void> completeWaiting(
-            @PathVariable("waitingId") UUID waitingId
+            @PathVariable("waitingId") UUID waitingId,
+            @RequestHeader("X-Idempotency-Key") String idempotencyKey
     );
 }
