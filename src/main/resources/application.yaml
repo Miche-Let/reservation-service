@@ -7,10 +7,14 @@ spring:
     username: ${DB_USER:admin}
     password: ${DB_PASSWORD:admin}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE:10}
+      minimum-idle: ${SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE:10}
+      connection-timeout: ${SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT:30000}
 
   jpa:
     hibernate:
-      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -23,13 +27,21 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 
-#  kafka:
-#    bootstrap-servers: ${KAFKA_HOST}:${KAFKA_PORT}
-#    producer:
-#      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-#      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-#      properties:
-#        spring.json.add.type.headers: false
+  kafka:
+    bootstrap-servers: ${KAFKA_HOST:localhost}:${KAFKA_PORT:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: reservation-service-consumer
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+kafka:
+  stub: ${KAFKA_STUB:false}
 
 #  cloud:
 #    discovery:
@@ -48,6 +60,22 @@ feign:
     url: ${FEIGN_TIMESLOT_SERVICE_URL:http://localhost:19400}
   waiting-service:
     url: ${FEIGN_WAITING_SERVICE_URL:http://localhost:19300}
+  client:
+    config:
+      timeslot-service:
+        connectTimeout: ${FEIGN_TIMESLOT_CONNECT_TIMEOUT:3000}
+        readTimeout: ${FEIGN_TIMESLOT_READ_TIMEOUT:5000}
+      waiting-service:
+        connectTimeout: ${FEIGN_WAITING_CONNECT_TIMEOUT:3000}
+        readTimeout: ${FEIGN_WAITING_READ_TIMEOUT:5000}
+
+outbox:
+  scheduler:
+    fixed-delay-ms: ${OUTBOX_SCHEDULER_FIXED_DELAY_MS:1000}
+
+noshow:
+  scheduler:
+    fixed-delay-ms: ${NOSHOW_SCHEDULER_FIXED_DELAY_MS:60000}
 
 server:
   port: 19500

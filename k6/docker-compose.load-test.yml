@@ -1,0 +1,174 @@
+name: reservation-load-test
+
+services:
+  db:
+    image: postgres:18
+    container_name: lt-db
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: michelet_db
+      TZ: Asia/Seoul
+    ports:
+      - "15432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - lt-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d michelet_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lt-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: lt-redis
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+    ports:
+      - "16379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - lt-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.3
+    container_name: lt-zookeeper
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - lt-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.3
+    container_name: lt-kafka
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_HEAP_OPTS: "-Xmx512m -Xms256m"
+    networks:
+      - lt-network
+
+  wiremock:
+    image: wiremock/wiremock:3.10.0
+    container_name: lt-wiremock
+    command: ["--no-request-journal"]
+    environment:
+      JAVA_OPTS: "-Xmx400m -Xms128m"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    volumes:
+      - ./wiremock/mappings:/home/wiremock/mappings:ro
+    ports:
+      - "18080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/__admin/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - lt-network
+
+  reservation-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: lt-reservation-service
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 768M
+    environment:
+      # Heap 256m 고정. 나머지 ~512m은 Metaspace/CodeCache/스레드 스택 몫.
+      # 768m 컨테이너: OOM Kill 없이 GC 압박·응답 지연을 측정하는 목적.
+      # G1GC 명시 튜닝: 소형 힙(256m)·제한 CPU(0.5 core) 환경에서 Full GC 스파이크를 줄이는 목적.
+      #   G1HeapRegionSize=1m     : 256m 힙에 1m 리전 256개 → G1 디폴트 최소 단위, 소형 힙에 최적
+      #   MaxGCPauseMillis=100    : GC 일시 정지 목표 100ms (디폴트 200ms보다 타이트)
+      #   InitiatingHeapOccupancyPercent=25 : 힙 25% 채워지면 Concurrent Marking 시작
+      #                                       (디폴트 45% → 일찍 GC 유도해 Full GC 빈도 감소)
+      JAVA_TOOL_OPTIONS: "-Xmx256m -Xms128m -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=64m -XX:+UseG1GC -XX:G1HeapRegionSize=1m -XX:MaxGCPauseMillis=100 -XX:InitiatingHeapOccupancyPercent=25"
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: michelet_db
+      DB_USER: admin
+      DB_PASSWORD: admin
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_HOST: kafka
+      KAFKA_PORT: 29092
+      KAFKA_STUB: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+      # stub 설정: 시나리오에 따라 수동으로 전환
+      # - "false" : mixed 시나리오 (Feign → WireMock 실제 HTTP 경로 + 지연 시뮬레이션)
+      # - "true"  : write-heavy / read-only 시나리오 (Feign 없이 서비스 단독 경로)
+      TIMESLOT_STUB: "false"
+      WAITING_STUB: "false"
+      FEIGN_TIMESLOT_SERVICE_URL: http://wiremock:8080
+      FEIGN_WAITING_SERVICE_URL: http://wiremock:8080
+      INTERNAL_AUTH_SECRET: michelet-internal-auth-secret-key-a8K2mQ9xLp4Vt7Rz1Nc
+      WARMUP_ENABLED: "true"
+    ports:
+      - "19500:19500"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      wiremock:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "curl -sf -o /dev/null http://localhost:19500/api/v1/reservations -H 'X-User-Id: 00000000-0000-0000-0000-000000000001' -H 'X-User-Role: USER'"
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+    networks:
+      - lt-network
+
+volumes:
+  lt-db-data:
+    name: lt-db-data
+
+networks:
+  lt-network:
+    name: lt-network

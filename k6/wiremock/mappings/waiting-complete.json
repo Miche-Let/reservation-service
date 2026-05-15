@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "DELETE",
+    "urlPathPattern": "/internal/waitings/[^/]+/complete"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": { "status": "ok", "data": null },
+    "fixedDelayMilliseconds": 25
+  }
+}

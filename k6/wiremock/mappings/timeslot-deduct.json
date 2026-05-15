@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "PATCH",
+    "urlPathPattern": "/internal/v1/time-slots/[^/]+/deduct"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": { "status": "ok", "data": null },
+    "fixedDelayMilliseconds": 35
+  }
+}
