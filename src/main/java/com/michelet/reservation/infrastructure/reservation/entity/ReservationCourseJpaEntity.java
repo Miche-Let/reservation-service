@@ -4,6 +4,7 @@ import com.michelet.reservation.infrastructure.reservation.common.BaseJpaEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -13,7 +14,12 @@ import org.hibernate.annotations.SQLRestriction;
 import java.util.UUID;
 
 @Entity
-@Table(name = "p_reservation_courses")
+@Table(
+    name = "p_reservation_courses",
+    indexes = {
+        @Index(name = "idx_p_reservation_courses_reservation_id", columnList = "reservation_id")
+    }
+)
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

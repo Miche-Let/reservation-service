@@ -8,6 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.LocalDate;
@@ -19,7 +20,13 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 @Entity
-@Table(name = "p_reservations")
+@Table(
+    name = "p_reservations",
+    indexes = {
+        @Index(name = "idx_p_reservations_user_id_deleted_at_created_at", columnList = "user_id, deleted_at, created_at"),
+        @Index(name = "idx_p_reservations_user_id_status_deleted_at", columnList = "user_id, status, deleted_at"),
+    }
+)
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
