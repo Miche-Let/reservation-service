@@ -1,0 +1,24 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/internal/waitings/verify-token"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "status": "ok",
+      "data": {
+        "waitingId": "00000000-0000-0000-0000-000000000001",
+        "token": "mock-token",
+        "position": 0,
+        "status": "ACTIVE",
+        "enteredAt": "2026-05-15T00:00:00",
+        "activatedAt": "2026-05-15T00:00:00",
+        "estimatedWaitSeconds": 0,
+        "accessToken": null
+      }
+    },
+    "fixedDelayMilliseconds": 25
+  }
+}
