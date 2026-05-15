@@ -18,7 +18,7 @@ services:
       - "15432:5432"
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - lt-db-data:/var/lib/postgresql
+      - lt-db-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U admin -d michelet_db"]
       interval: 10s
@@ -134,14 +134,15 @@ services:
       KAFKA_PORT: 29092
       KAFKA_STUB: "false"
       SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
-      # Feign → WireMock (실제 HTTP 클라이언트 경로 + 지연 시뮬레이션)
-      # mixed 시나리오(WireMock Feign): "false" + FEIGN_*_URL 활성
-      # write-heavy / read-only 시나리오(서비스 단독 경로): "true"
-      TIMESLOT_STUB: "true"
-      WAITING_STUB: "true"
+      # stub 설정: 시나리오에 따라 수동으로 전환
+      # - "false" : mixed 시나리오 (Feign → WireMock 실제 HTTP 경로 + 지연 시뮬레이션)
+      # - "true"  : write-heavy / read-only 시나리오 (Feign 없이 서비스 단독 경로)
+      TIMESLOT_STUB: "false"
+      WAITING_STUB: "false"
       FEIGN_TIMESLOT_SERVICE_URL: http://wiremock:8080
       FEIGN_WAITING_SERVICE_URL: http://wiremock:8080
       INTERNAL_AUTH_SECRET: michelet-internal-auth-secret-key-a8K2mQ9xLp4Vt7Rz1Nc
+      WARMUP_ENABLED: "true"
     ports:
       - "19500:19500"
     depends_on:

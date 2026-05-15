@@ -67,7 +67,7 @@ export function commonHeaders(userId) {
   };
 }
 
-export function reservationBody(userId) {
+export function reservationBody() {
   return JSON.stringify({
     restaurantId:  FIXED.RESTAURANT_ID,
     timeSlotId:    FIXED.TIME_SLOT_ID,

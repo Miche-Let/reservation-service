@@ -23,8 +23,8 @@ import org.hibernate.annotations.SQLRestriction;
 @Table(
     name = "p_reservations",
     indexes = {
-        @Index(name = "idx_p_reservations_user_id_deleted_at_created_at", columnList = "user_id, deleted_at, created_at"),
-        @Index(name = "idx_p_reservations_user_id_status_deleted_at", columnList = "user_id, status, deleted_at"),
+        @Index(name = "idx_p_reservations_user_id_created_at", columnList = "user_id, created_at"),
+        @Index(name = "idx_p_reservations_user_id_status", columnList = "user_id, status"),
     }
 )
 @SQLRestriction("deleted_at IS NULL")

@@ -73,10 +73,10 @@ export const options = {
     dur_create_all:     ['p(95)<900'],
     dur_modify_all:     ['p(95)<900'],
 
-    // drift 허용 한계: late가 early의 1.5배 이내여야 한다
+    // drift 허용 한계: late가 early의 1.25배 이내여야 한다
     // (k6 임계값은 단일 수치만 지원하므로 절대값으로 표현)
     dur_create_early:   ['p(95)<800'],
-    dur_create_late:    ['p(95)<1000'],  // early 대비 25% drift 허용
+    dur_create_late:    ['p(95)<1000'],  // early 대비 25% drift 허용 (1.25배)
     dur_modify_early:   ['p(95)<800'],
     dur_modify_late:    ['p(95)<1000'],
     dur_list_early:     ['p(95)<400'],
