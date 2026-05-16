@@ -45,6 +45,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 
 @ExtendWith(MockitoExtension.class)
 class ReservationCommandServiceTest {
@@ -59,6 +61,10 @@ class ReservationCommandServiceTest {
     WaitingPort waitingPort;
     @Mock
     OutboxEventPort outboxEventPort;
+    @Mock
+    PlatformTransactionManager txManager;
+    @Mock
+    TransactionStatus txStatus;
 
     @InjectMocks
     ReservationCommandServiceImpl commandService;
@@ -113,7 +119,11 @@ class ReservationCommandServiceTest {
     }
 
     @BeforeEach
-    void stubSave() {
+    void setUp() {
+        // TransactionTemplate이 txManager에 위임; 람다가 정상 실행되도록 스텁 설정
+        lenient().when(txManager.getTransaction(any())).thenReturn(txStatus);
+        commandService.initTx();
+
         lenient().when(reservationRepository.save(any(Reservation.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
         lenient().when(reservationCourseRepository.save(any(ReservationCourse.class)))
@@ -139,7 +149,7 @@ class ReservationCommandServiceTest {
 
             assertThat(result).isNotNull();
             assertThat(result.status()).isEqualTo(ReservationStatus.CONFIRMED);
-            verify(reservationRepository, times(2)).save(any(Reservation.class));
+            verify(reservationRepository, times(1)).save(any(Reservation.class));
             verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2), any(UUID.class));
             verify(waitingPort).completeWaiting(eq(waitingId), anyString());
             // reservation.created + waiting.completed 2개 적재
@@ -227,7 +237,7 @@ class ReservationCommandServiceTest {
             ReservationResult result = commandService.create(createCommand());
 
             assertThat(result.status()).isEqualTo(ReservationStatus.CONFIRMED);
-            verify(reservationRepository, times(2)).save(any(Reservation.class));
+            verify(reservationRepository, times(1)).save(any(Reservation.class));
             verify(outboxEventPort).recordReservationCreated(any(), any(), any(), any(), any(), anyInt(), any());
             verify(outboxEventPort).recordWaitingCompleted(any(), any(), any());
         }
