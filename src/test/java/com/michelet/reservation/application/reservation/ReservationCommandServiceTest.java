@@ -82,7 +82,7 @@ class ReservationCommandServiceTest {
                 reservationId, userId, restaurantId, timeSlotId,
                 futureDate, GuestCount.of(2), ReservationStatus.CONFIRMED,
                 futureDate.minusDays(2), futureDate.minusDays(2),
-                LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+                LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null, null
         );
     }
 
@@ -94,7 +94,7 @@ class ReservationCommandServiceTest {
                 now.toLocalDate(), GuestCount.of(2), ReservationStatus.CONFIRMED,
                 now.toLocalDate().minusDays(2), now.toLocalDate().minusDays(2),
                 now.plusMinutes(30),   // noshowDeadline → windowStart = now - 30min, upper = now + 30min
-                null
+                null, null
         );
     }
 
@@ -106,7 +106,7 @@ class ReservationCommandServiceTest {
                 reservationId, userId, restaurantId, timeSlotId,
                 nearDate, GuestCount.of(2), ReservationStatus.CONFIRMED,
                 passedDeadline, passedDeadline,
-                LocalDateTime.of(nearDate, slotStartTime).plusMinutes(30), null
+                LocalDateTime.of(nearDate, slotStartTime).plusMinutes(30), null, null
         );
     }
 
@@ -347,7 +347,7 @@ class ReservationCommandServiceTest {
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_PAID,
                     futureDate.minusDays(2), futureDate.minusDays(2),
-                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null, null
             );
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
@@ -431,7 +431,7 @@ class ReservationCommandServiceTest {
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.COMPLETED,
                     futureDate.minusDays(2), futureDate.minusDays(2),
-                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null, null
             );
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
@@ -490,7 +490,7 @@ class ReservationCommandServiceTest {
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_UNPAID,
                     futureDate.minusDays(2), futureDate.minusDays(2),
-                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null, null
             );
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
@@ -507,7 +507,7 @@ class ReservationCommandServiceTest {
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.COMPLETED,
                     futureDate.minusDays(2), futureDate.minusDays(2),
-                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null, null
             );
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
@@ -587,7 +587,7 @@ class ReservationCommandServiceTest {
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_PAID,
                     futureDate.minusDays(2), futureDate.minusDays(2),
-                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null, null
             );
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 

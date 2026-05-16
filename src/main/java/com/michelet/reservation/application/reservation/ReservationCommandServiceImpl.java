@@ -167,7 +167,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         // 3단계: DB 전용 쓰기 트랜잭션 (SQL 실행 시간만 커넥션 점유)
         ReservationResult result;
         try {
-            result = Objects.requireNonNull(writeTx.execute(status -> persistModification(command)));
+            result = Objects.requireNonNull(writeTx.execute(status -> persistModification(command, snapshot)));
         } catch (ObjectOptimisticLockingFailureException e) {
             if (slotChange.needsDeduct()) {
                 tryRestoreSlotQuietly(slotChange.deductTimeSlotId(), command.reservationId(),
@@ -202,11 +202,16 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
     private SlotSnapshot loadSlotSnapshot(UUID reservationId, UUID userId, String userRole) {
         Reservation r = findAndVerifyOwnership(reservationId, userId, userRole);
-        return new SlotSnapshot(r.getTimeSlotId(), r.getReservedDate(), r.getGuestCount().value());
+        return new SlotSnapshot(r.getTimeSlotId(), r.getReservedDate(), r.getGuestCount().value(), r.getVersion());
     }
 
-    private ReservationResult persistModification(ModifyReservationCommand command) {
+    private ReservationResult persistModification(ModifyReservationCommand command, SlotSnapshot snapshot) {
         Reservation reservation = findAndVerifyOwnership(command.reservationId(), command.userId(), command.userRole());
+
+        // readTx 이후 타 TX가 수정했으면 스냅샷 기반 델타가 낡았을 수 있으므로 낙관적 충돌로 처리
+        if (!Objects.equals(reservation.getVersion(), snapshot.version())) {
+            throw new ObjectOptimisticLockingFailureException(Reservation.class, command.reservationId());
+        }
 
         UUID originalTimeSlotId = reservation.getTimeSlotId();
         LocalDate originalDate = reservation.getReservedDate();
@@ -401,7 +406,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
     // ── inner records ────────────────────────────────────────────────────────
 
-    private record SlotSnapshot(UUID timeSlotId, LocalDate reservedDate, int guestCount) {}
+    private record SlotSnapshot(UUID timeSlotId, LocalDate reservedDate, int guestCount, Long version) {}
 
     private record SlotReturnInfo(UUID reservationId, UUID timeSlotId, int guestCount) {}
 

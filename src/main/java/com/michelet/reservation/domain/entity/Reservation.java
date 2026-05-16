@@ -35,6 +35,8 @@ public class Reservation {
 
     private LocalDateTime checkedInAt;
 
+    private Long version;
+
     public static Reservation create(
             UUID userId,
             UUID restaurantId,
@@ -71,7 +73,8 @@ public class Reservation {
             LocalDate cancelDeadline,
             LocalDate modifyDeadline,
             LocalDateTime noshowDeadline,
-            LocalDateTime checkedInAt
+            LocalDateTime checkedInAt,
+            Long version
     ) {
         validateReconstituteInput(id, userId, restaurantId, timeSlotId, reservedDate, guestCount, status);
         Reservation r = new Reservation();
@@ -87,6 +90,7 @@ public class Reservation {
         r.modifyDeadline = modifyDeadline;
         r.noshowDeadline = noshowDeadline;
         r.checkedInAt = checkedInAt;
+        r.version = version;
         return r;
     }
 
