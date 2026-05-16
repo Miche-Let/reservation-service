@@ -85,6 +85,7 @@ public class OutboxEventAdapter implements OutboxEventPort {
     }
 
     @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordSlotReleased(UUID reservationId, UUID timeSlotId, int capacity,
                                    LocalDateTime occurredAt) {
         save(reservationId, AggregateType.RESERVATION, KafkaTopics.RESERVATION_SLOT_RELEASED,

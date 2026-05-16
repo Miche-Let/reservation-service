@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -40,6 +41,7 @@ class ReservationQueryServiceTest {
 
     @Mock ReservationRepository reservationRepository;
     @Mock ReservationCourseRepository reservationCourseRepository;
+    @Mock CacheManager cacheManager;
 
     @InjectMocks ReservationQueryServiceImpl queryService;
 
@@ -86,6 +88,9 @@ class ReservationQueryServiceTest {
         }
     }
 
+    // NOTE: @Cacheable AOP는 Spring 프록시에서 실행되므로 Mockito 단위 테스트에서는 동작하지 않는다.
+    // 캐시 히트 경로(authorization bypass 방지)는 통합 테스트에서 별도 검증 필요.
+    // 현재 테스트는 DB 경로(캐시 미스)의 비즈니스 로직만 검증한다.
     @Nested
     class GetDetail {
 
