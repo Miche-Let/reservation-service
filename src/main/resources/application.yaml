@@ -14,13 +14,16 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:create-drop}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         default_schema: reservation_service
     show-sql: false
     open-in-view: false
+
+  cache:
+    type: redis
 
   data:
     redis:

@@ -30,6 +30,8 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -61,6 +63,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     // ── create ──────────────────────────────────────────────────────────────
 
     @Override
+    // 새 예약이 userId의 list에 추가되므로 list 캐시 전체 무효화
+    @CacheEvict(cacheNames = "reservation:list", allEntries = true)
     public ReservationResult create(CreateReservationCommand command) {
         // 1단계: 대기열 토큰 검증 (Feign 호출, DB 커넥션 미점유)
         var tokenResult = waitingPort.verifyToken(command.waitingToken());
@@ -125,6 +129,10 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     // ── modify ──────────────────────────────────────────────────────────────
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "reservation:list",   allEntries = true),
+            @CacheEvict(cacheNames = "reservation:detail", key = "#command.reservationId().toString()")
+    })
     public ReservationResult modify(ModifyReservationCommand command) {
         // 1단계: 델타 계산을 위한 현재 슬롯 상태 스냅샷 로드 (짧은 읽기 전용 TX, 즉시 커넥션 반환)
         SlotSnapshot snapshot = Objects.requireNonNull(
@@ -254,6 +262,10 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     // ── cancel ──────────────────────────────────────────────────────────────
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "reservation:list",   allEntries = true),
+            @CacheEvict(cacheNames = "reservation:detail", key = "#command.reservationId().toString()")
+    })
     public void cancel(CancelReservationCommand command) {
         // 1단계: DB 전용 트랜잭션
         SlotReturnInfo slotInfo = writeTx.execute(status -> cancelRecord(command));
@@ -279,6 +291,10 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     // ── delete ──────────────────────────────────────────────────────────────
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "reservation:list",   allEntries = true),
+            @CacheEvict(cacheNames = "reservation:detail", key = "#command.reservationId().toString()")
+    })
     public void delete(DeleteReservationCommand command) {
         // 1단계: DB 전용 트랜잭션
         SlotReturnInfo slotInfo = writeTx.execute(status -> deleteRecord(command));
