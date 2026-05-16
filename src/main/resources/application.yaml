@@ -19,6 +19,9 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         default_schema: reservation_service
+        jdbc:
+          batch_size: 30
+        order_inserts: true
     show-sql: false
     open-in-view: false
 
