@@ -9,7 +9,10 @@ import com.michelet.reservation.application.reservation.result.ReservationCourse
 import com.michelet.reservation.application.reservation.result.ReservationResult;
 import com.michelet.reservation.application.reservation.result.ReservationSummaryResult;
 import java.time.Duration;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheErrorHandler;
+import org.springframework.cache.interceptor.SimpleCacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
@@ -21,17 +24,21 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 @Configuration
 @EnableCaching
-public class RedisCacheConfig {
+public class RedisCacheConfig implements CachingConfigurer {
 
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         ObjectMapper objectMapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-                // NON_FINAL: non-final 타입에 @class 포함 → 역직렬화 시 정확한 타입 복원
+                // NON_FINAL: non-final 타입에 @class 포함 → 역직렬화 시 정확한 타입 복원.
+                // allowlist를 com.michelet.reservation + java.util.List(및 구현체)로 한정해
+                // Jackson gadget 공격 위험을 줄인다.
+                // record(final) 타입은 mix-in @JsonTypeInfo로 별도 처리하므로 validator 범위 불필요.
                 .activateDefaultTyping(
                         BasicPolymorphicTypeValidator.builder()
-                                .allowIfSubType(Object.class)
+                                .allowIfSubType("com.michelet.reservation.")
+                                .allowIfSubType(java.util.List.class)
                                 .build(),
                         ObjectMapper.DefaultTyping.NON_FINAL,
                         JsonTypeInfo.As.PROPERTY
@@ -61,6 +68,13 @@ public class RedisCacheConfig {
                 .withCacheConfiguration("reservation:detail",
                         defaultConfig.entryTtl(Duration.ofSeconds(60)))
                 .build();
+    }
+
+    // Redis 오류(직렬화 실패, 연결 끊김 등)를 WARN 로그로 남기고 예외를 삼킴.
+    // 캐시 오류가 500으로 전파되지 않고 실제 메서드(DB 조회)로 fallback된다.
+    @Override
+    public CacheErrorHandler errorHandler() {
+        return new SimpleCacheErrorHandler();
     }
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
