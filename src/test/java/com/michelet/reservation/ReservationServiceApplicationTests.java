@@ -9,7 +9,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(properties = {
         "eureka.client.enabled=false",
-        "spring.kafka.bootstrap-servers=localhost:9092",
+        "kafka.stub=true",
         "spring.jpa.hibernate.ddl-auto=create-drop"
 })
 @Testcontainers
