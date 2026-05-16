@@ -14,9 +14,9 @@ public interface ReservationCommandService {
 
   ReservationResult modify(ModifyReservationCommand command);
 
-  void cancel(CancelReservationCommand command);
+  ReservationResult cancel(CancelReservationCommand command);
 
   ReservationStatusResult checkIn(CheckInCommand command);
 
-  void delete(DeleteReservationCommand command);
+  ReservationResult delete(DeleteReservationCommand command);
 }
