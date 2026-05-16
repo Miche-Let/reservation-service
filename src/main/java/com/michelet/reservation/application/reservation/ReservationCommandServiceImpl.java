@@ -63,7 +63,11 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     // ── create ──────────────────────────────────────────────────────────────
 
     @Override
-    // 새 예약이 userId의 list에 추가되므로 list 캐시 전체 무효화
+    // 새 예약이 userId의 list에 추가되므로 list 캐시 전체 무효화.
+    // @CacheEvict(beforeInvocation=false 기본값): 메서드 성공 반환 직후 실행.
+    // DB 커밋과 eviction 사이 짧은 레이스 윈도우에서 읽기 요청이 DB에서 fresh 데이터를 읽어
+    // 캐시를 갱신할 수 있으나, eviction이 이를 즉시 무효화하므로 stale 노출 없음.
+    // 실패한 쓰기에 대해서는 eviction이 실행되지 않아 기존 캐시가 보존된다.
     @CacheEvict(cacheNames = "reservation:list", allEntries = true)
     public ReservationResult create(CreateReservationCommand command) {
         // 1단계: 대기열 토큰 검증 (Feign 호출, DB 커넥션 미점유)
@@ -343,8 +347,9 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
             timeSlotPort.incrementStock(timeSlotId, guestCount,
                     "restore:" + timeSlotId + ":" + reservationId + ":" + operation);
         } catch (Exception e) {
-            log.warn("[RestoreSlot] 슬롯 복구 실패 — timeSlotId={}, reservationId={}, op={}",
+            log.warn("[RestoreSlot] 슬롯 복구 Feign 실패 — outbox 이벤트로 비동기 복구 예정 timeSlotId={}, reservationId={}, op={}",
                     timeSlotId, reservationId, operation, e);
+            outboxEventPort.recordSlotReleased(reservationId, timeSlotId, guestCount, LocalDateTime.now());
         }
     }
 

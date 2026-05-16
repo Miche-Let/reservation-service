@@ -1,11 +1,10 @@
 package com.michelet.reservation.application.reservation;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.michelet.common.exception.BusinessException;
 import com.michelet.reservation.application.reservation.result.ReservationActiveResult;
 import com.michelet.reservation.application.reservation.result.ReservationCourseResult;
 import com.michelet.reservation.application.reservation.result.ReservationExistsResult;
+import com.michelet.reservation.application.reservation.result.ReservationListCachePage;
 import com.michelet.reservation.application.reservation.result.ReservationResult;
 import com.michelet.reservation.application.reservation.result.ReservationSummaryResult;
 import com.michelet.reservation.application.reservation.result.ReservationValidityResult;
@@ -39,17 +38,19 @@ public class ReservationQueryServiceImpl implements ReservationQueryService {
     //
     // getList()는 Page<T>를 직접 캐싱하지 않는다.
     // PageImpl에 @JsonCreator가 없어 GenericJackson2JsonRedisSerializer가 역직렬화에 실패하므로
-    // non-final 래퍼 클래스 CachedListPage에 content + totalElements만 저장하고
+    // non-final 래퍼 클래스 ReservationListCachePage에 content + totalElements만 저장하고
     // 캐시 히트 시 PageImpl로 재조립한다.
     @Override
     @Transactional(readOnly = true)
     public Page<ReservationSummaryResult> getList(UUID userId, ReservationStatus status, Pageable pageable) {
+        // sort 정보를 키에 포함 — 동일 page/size라도 정렬 기준이 다르면 별개 캐시 항목이어야 한다.
+        String sortKey = pageable.getSort().isSorted() ? pageable.getSort().toString() : "UNSORTED";
         String key = userId.toString() + ':' + (status != null ? status.name() : "ALL")
-                + ':' + pageable.getPageNumber() + ':' + pageable.getPageSize();
+                + ':' + pageable.getPageNumber() + ':' + pageable.getPageSize() + ':' + sortKey;
         Cache listCache = cacheManager.getCache("reservation:list");
 
         if (listCache != null) {
-            CachedListPage hit = listCache.get(key, CachedListPage.class);
+            ReservationListCachePage hit = listCache.get(key, ReservationListCachePage.class);
             if (hit != null) {
                 return new PageImpl<>(hit.content, pageable, hit.totalElements);
             }
@@ -64,7 +65,7 @@ public class ReservationQueryServiceImpl implements ReservationQueryService {
         long total = page.getTotalElements();
 
         if (listCache != null) {
-            listCache.put(key, new CachedListPage(content, total));
+            listCache.put(key, new ReservationListCachePage(content, total));
         }
 
         return new PageImpl<>(content, pageable, total);
@@ -130,18 +131,4 @@ public class ReservationQueryServiceImpl implements ReservationQueryService {
         }
     }
 
-    // Page<T>를 직접 캐싱하면 PageImpl 역직렬화 실패 → content + total만 저장하는 래퍼.
-    // non-final class(record 아님)이어야 NON_FINAL typing이 @class를 삽입한다.
-    static class CachedListPage {
-        public final List<ReservationSummaryResult> content;
-        public final long totalElements;
-
-        @JsonCreator
-        CachedListPage(
-                @JsonProperty("content") List<ReservationSummaryResult> content,
-                @JsonProperty("totalElements") long totalElements) {
-            this.content = content;
-            this.totalElements = totalElements;
-        }
-    }
 }
