@@ -73,9 +73,12 @@ public class ReservationQueryServiceImpl implements ReservationQueryService {
 
     @Override
     @Transactional(readOnly = true)
+    // userId를 키에 포함 — 캐시 히트 시 verifyAccess()가 실행되지 않으므로
+    // 키 자체가 소유권을 보장해야 한다. userId 없이 reservationId만으로 캐싱하면
+    // 타 사용자가 UUID를 알 경우 캐시 히트로 무단 조회 가능.
     @Cacheable(
             cacheNames = "reservation:detail",
-            key = "#reservationId.toString()"
+            key = "#userId.toString() + ':' + #reservationId.toString()"
     )
     public ReservationResult getDetail(UUID userId, String userRole, UUID reservationId) {
         Reservation reservation = reservationRepository.findById(reservationId)
