@@ -45,6 +45,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 
 @ExtendWith(MockitoExtension.class)
 class ReservationCommandServiceTest {
@@ -59,6 +61,10 @@ class ReservationCommandServiceTest {
     WaitingPort waitingPort;
     @Mock
     OutboxEventPort outboxEventPort;
+    @Mock
+    PlatformTransactionManager txManager;
+    @Mock
+    TransactionStatus txStatus;
 
     @InjectMocks
     ReservationCommandServiceImpl commandService;
@@ -76,7 +82,7 @@ class ReservationCommandServiceTest {
                 reservationId, userId, restaurantId, timeSlotId,
                 futureDate, GuestCount.of(2), ReservationStatus.CONFIRMED,
                 futureDate.minusDays(2), futureDate.minusDays(2),
-                LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+                LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null, null
         );
     }
 
@@ -88,7 +94,7 @@ class ReservationCommandServiceTest {
                 now.toLocalDate(), GuestCount.of(2), ReservationStatus.CONFIRMED,
                 now.toLocalDate().minusDays(2), now.toLocalDate().minusDays(2),
                 now.plusMinutes(30),   // noshowDeadline → windowStart = now - 30min, upper = now + 30min
-                null
+                null, null
         );
     }
 
@@ -100,7 +106,7 @@ class ReservationCommandServiceTest {
                 reservationId, userId, restaurantId, timeSlotId,
                 nearDate, GuestCount.of(2), ReservationStatus.CONFIRMED,
                 passedDeadline, passedDeadline,
-                LocalDateTime.of(nearDate, slotStartTime).plusMinutes(30), null
+                LocalDateTime.of(nearDate, slotStartTime).plusMinutes(30), null, null
         );
     }
 
@@ -113,7 +119,11 @@ class ReservationCommandServiceTest {
     }
 
     @BeforeEach
-    void stubSave() {
+    void setUp() {
+        // TransactionTemplate이 txManager에 위임; 람다가 정상 실행되도록 스텁 설정
+        lenient().when(txManager.getTransaction(any())).thenReturn(txStatus);
+        commandService.initTx();
+
         lenient().when(reservationRepository.save(any(Reservation.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
         lenient().when(reservationCourseRepository.save(any(ReservationCourse.class)))
@@ -139,7 +149,7 @@ class ReservationCommandServiceTest {
 
             assertThat(result).isNotNull();
             assertThat(result.status()).isEqualTo(ReservationStatus.CONFIRMED);
-            verify(reservationRepository, times(2)).save(any(Reservation.class));
+            verify(reservationRepository, times(1)).save(any(Reservation.class));
             verify(timeSlotPort).decrementStock(eq(timeSlotId), eq(2), any(UUID.class));
             verify(waitingPort).completeWaiting(eq(waitingId), anyString());
             // reservation.created + waiting.completed 2개 적재
@@ -227,7 +237,7 @@ class ReservationCommandServiceTest {
             ReservationResult result = commandService.create(createCommand());
 
             assertThat(result.status()).isEqualTo(ReservationStatus.CONFIRMED);
-            verify(reservationRepository, times(2)).save(any(Reservation.class));
+            verify(reservationRepository, times(1)).save(any(Reservation.class));
             verify(outboxEventPort).recordReservationCreated(any(), any(), any(), any(), any(), anyInt(), any());
             verify(outboxEventPort).recordWaitingCompleted(any(), any(), any());
         }
@@ -337,7 +347,7 @@ class ReservationCommandServiceTest {
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_PAID,
                     futureDate.minusDays(2), futureDate.minusDays(2),
-                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null, null
             );
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
@@ -421,7 +431,7 @@ class ReservationCommandServiceTest {
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.COMPLETED,
                     futureDate.minusDays(2), futureDate.minusDays(2),
-                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null, null
             );
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
@@ -480,7 +490,7 @@ class ReservationCommandServiceTest {
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_UNPAID,
                     futureDate.minusDays(2), futureDate.minusDays(2),
-                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null, null
             );
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
@@ -497,7 +507,7 @@ class ReservationCommandServiceTest {
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.COMPLETED,
                     futureDate.minusDays(2), futureDate.minusDays(2),
-                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null, null
             );
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
@@ -577,7 +587,7 @@ class ReservationCommandServiceTest {
                     reservationId, userId, restaurantId, timeSlotId,
                     futureDate, GuestCount.of(2), ReservationStatus.CANCELLED_PAID,
                     futureDate.minusDays(2), futureDate.minusDays(2),
-                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null
+                    LocalDateTime.of(futureDate, slotStartTime).plusMinutes(30), null, null
             );
             when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 

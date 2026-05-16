@@ -29,7 +29,8 @@ public class ReservationMapper {
         entity.getTimeSlotId(), entity.getReservedDate(),
         GuestCount.of(entity.getGuestCount()), entity.getStatus(),
         entity.getCancelDeadline(), entity.getModifyDeadline(),
-        entity.getNoshowDeadline(), entity.getCheckedInAt()
+        entity.getNoshowDeadline(), entity.getCheckedInAt(),
+        entity.getVersion()
     );
   }
 }
