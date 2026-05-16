@@ -272,11 +272,11 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     })
     public ReservationResult cancel(CancelReservationCommand command) {
         // 1단계: DB 전용 트랜잭션
-        SlotReturnInfo slotInfo = writeTx.execute(status -> cancelRecord(command));
+        SlotReturnInfo slotInfo = Objects.requireNonNull(writeTx.execute(status -> cancelRecord(command)));
 
         // 2단계: 슬롯 복구 베스트-에포트 (Feign 호출, DB 커넥션 미점유)
         // outbox reservation.cancelled 이벤트가 Feign 실패 시 비동기 복구 보장
-        if (slotInfo != null && slotInfo.timeSlotId() != null) {
+        if (slotInfo.timeSlotId() != null) {
             tryRestoreSlotQuietly(slotInfo.timeSlotId(), slotInfo.reservationId(), "cancel", slotInfo.guestCount());
         }
         return slotInfo.result();
@@ -302,10 +302,10 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     })
     public ReservationResult delete(DeleteReservationCommand command) {
         // 1단계: DB 전용 트랜잭션
-        SlotReturnInfo slotInfo = writeTx.execute(status -> deleteRecord(command));
+        SlotReturnInfo slotInfo = Objects.requireNonNull(writeTx.execute(status -> deleteRecord(command)));
 
         // 2단계: 필요 시 슬롯 복구 베스트-에포트 (Feign 호출, DB 커넥션 미점유)
-        if (slotInfo != null && slotInfo.timeSlotId() != null) {
+        if (slotInfo.timeSlotId() != null) {
             tryRestoreSlotQuietly(slotInfo.timeSlotId(), slotInfo.reservationId(), "delete", slotInfo.guestCount());
         }
         return slotInfo.result();
