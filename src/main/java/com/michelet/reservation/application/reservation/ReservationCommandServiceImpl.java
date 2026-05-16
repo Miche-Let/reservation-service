@@ -135,7 +135,9 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     @Override
     @Caching(evict = {
             @CacheEvict(cacheNames = "reservation:list",   allEntries = true),
-            @CacheEvict(cacheNames = "reservation:detail", key = "#command.userId().toString() + ':' + #command.reservationId().toString()")
+            // allEntries=true: MASTER는 타인 예약을 수정할 수 있어 command.userId()가 실제 소유자 ID와 다를 수 있다.
+            // 정확한 소유자 키를 어노테이션 레벨에서 알 수 없으므로 detail 전체 무효화.
+            @CacheEvict(cacheNames = "reservation:detail", allEntries = true)
     })
     public ReservationResult modify(ModifyReservationCommand command) {
         // 1단계: 델타 계산을 위한 현재 슬롯 상태 스냅샷 로드 (짧은 읽기 전용 TX, 즉시 커넥션 반환)
@@ -268,7 +270,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     @Override
     @Caching(evict = {
             @CacheEvict(cacheNames = "reservation:list",   allEntries = true),
-            @CacheEvict(cacheNames = "reservation:detail", key = "#command.userId().toString() + ':' + #command.reservationId().toString()")
+            @CacheEvict(cacheNames = "reservation:detail", allEntries = true)
     })
     public void cancel(CancelReservationCommand command) {
         // 1단계: DB 전용 트랜잭션
@@ -297,7 +299,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     @Override
     @Caching(evict = {
             @CacheEvict(cacheNames = "reservation:list",   allEntries = true),
-            @CacheEvict(cacheNames = "reservation:detail", key = "#command.userId().toString() + ':' + #command.reservationId().toString()")
+            @CacheEvict(cacheNames = "reservation:detail", allEntries = true)
     })
     public void delete(DeleteReservationCommand command) {
         // 1단계: DB 전용 트랜잭션

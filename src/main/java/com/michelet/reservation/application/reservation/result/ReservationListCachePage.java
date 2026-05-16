@@ -16,7 +16,7 @@ public class ReservationListCachePage {
     public ReservationListCachePage(
             @JsonProperty("content") List<ReservationSummaryResult> content,
             @JsonProperty("totalElements") long totalElements) {
-        this.content = content;
+        this.content = content != null ? content : List.of();
         this.totalElements = totalElements;
     }
 }
