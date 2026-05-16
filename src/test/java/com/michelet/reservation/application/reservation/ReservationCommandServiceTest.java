@@ -189,6 +189,8 @@ class ReservationCommandServiceTest {
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE.getCode()));
 
+            // 타임아웃은 실제 차감 여부 불확실 → voided 이벤트로 보상 보장
+            verify(outboxEventPort).recordReservationCreationVoided(any(), any(), anyInt(), any());
             verify(outboxEventPort, never()).recordReservationCreated(any(), any(), any(), any(), any(), anyInt(),
                     any());
             verify(outboxEventPort, never()).recordWaitingCompleted(any(), any(), any());
@@ -204,6 +206,8 @@ class ReservationCommandServiceTest {
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.TIMESLOT_SERVICE_UNAVAILABLE.getCode()));
 
+            // 연결 오류도 차감 여부 불확실 → voided 이벤트로 보상 보장
+            verify(outboxEventPort).recordReservationCreationVoided(any(), any(), anyInt(), any());
             verify(outboxEventPort, never()).recordReservationCreated(any(), any(), any(), any(), any(), anyInt(),
                     any());
             verify(outboxEventPort, never()).recordWaitingCompleted(any(), any(), any());
@@ -454,6 +458,8 @@ class ReservationCommandServiceTest {
             assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED_PAID);
             verify(outboxEventPort).recordReservationCancelled(any(), any(), any(), any(), any(), anyInt(), any(),
                     any());
+            // Feign 실패 → outbox로 비동기 슬롯 복구 보장
+            verify(outboxEventPort).recordSlotReleased(any(), any(), anyInt(), any());
         }
 
         @Test
@@ -529,6 +535,8 @@ class ReservationCommandServiceTest {
 
             verify(reservationRepository).delete(eq(reservationId), eq(userId));
             verify(outboxEventPort).recordReservationDeleted(any(), any(), any(), any(), anyInt(), any());
+            // Feign 실패 → outbox로 비동기 슬롯 복구 보장
+            verify(outboxEventPort).recordSlotReleased(any(), any(), anyInt(), any());
         }
 
         @Test
