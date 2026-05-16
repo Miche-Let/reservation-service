@@ -76,8 +76,8 @@ public class ReservationQueryServiceImpl implements ReservationQueryService {
     // userId를 키에 포함 — 캐시 히트 시 verifyAccess()가 실행되지 않으므로
     // 키 자체가 소유권을 보장한다. reservationId만으로 캐싱하면 타 사용자가 UUID를
     // 알 경우 캐시 히트로 무단 조회 가능.
-    // eviction은 쓰기 시 allEntries=true — MASTER가 타인 예약을 수정할 때
-    // 소유자 캐시 키를 어노테이션 레벨에서 알 수 없으므로 전체 무효화로 정확성 보장.
+    // eviction은 CommandService에서 #result.userId()를 키로 지정한 단건 DEL(O(1)).
+    // MASTER가 타인 예약을 조작할 때도 result에는 실제 소유자 userId가 담기므로 정확히 무효화된다.
     @Cacheable(
             cacheNames = "reservation:detail",
             key = "#userId.toString() + ':' + #reservationId.toString()"
