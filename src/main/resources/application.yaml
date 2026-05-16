@@ -22,6 +22,7 @@ spring:
         jdbc:
           batch_size: 30
         order_inserts: true
+        order_updates: true
     show-sql: false
     open-in-view: false
 
