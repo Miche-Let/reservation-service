@@ -135,7 +135,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     @Override
     @Caching(evict = {
             @CacheEvict(cacheNames = "reservation:list",   allEntries = true),
-            @CacheEvict(cacheNames = "reservation:detail", key = "#command.userId().toString() + ':' + #command.reservationId().toString()")
+            @CacheEvict(cacheNames = "reservation:detail", key = "#result.userId() + ':' + #result.reservationId()")
     })
     public ReservationResult modify(ModifyReservationCommand command) {
         // 1단계: 델타 계산을 위한 현재 슬롯 상태 스냅샷 로드 (짧은 읽기 전용 TX, 즉시 커넥션 반환)
@@ -268,17 +268,18 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     @Override
     @Caching(evict = {
             @CacheEvict(cacheNames = "reservation:list",   allEntries = true),
-            @CacheEvict(cacheNames = "reservation:detail", key = "#command.userId().toString() + ':' + #command.reservationId().toString()")
+            @CacheEvict(cacheNames = "reservation:detail", key = "#result.userId() + ':' + #result.reservationId()")
     })
-    public void cancel(CancelReservationCommand command) {
+    public ReservationResult cancel(CancelReservationCommand command) {
         // 1단계: DB 전용 트랜잭션
-        SlotReturnInfo slotInfo = writeTx.execute(status -> cancelRecord(command));
+        SlotReturnInfo slotInfo = Objects.requireNonNull(writeTx.execute(status -> cancelRecord(command)));
 
         // 2단계: 슬롯 복구 베스트-에포트 (Feign 호출, DB 커넥션 미점유)
         // outbox reservation.cancelled 이벤트가 Feign 실패 시 비동기 복구 보장
-        if (slotInfo != null) {
+        if (slotInfo.timeSlotId() != null) {
             tryRestoreSlotQuietly(slotInfo.timeSlotId(), slotInfo.reservationId(), "cancel", slotInfo.guestCount());
         }
+        return slotInfo.result();
     }
 
     private SlotReturnInfo cancelRecord(CancelReservationCommand command) {
@@ -289,7 +290,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                 saved.getId(), saved.getUserId(), saved.getRestaurantId(),
                 saved.getTimeSlotId(), saved.getReservedDate(),
                 saved.getGuestCount().value(), saved.getStatus(), LocalDateTime.now());
-        return new SlotReturnInfo(saved.getId(), saved.getTimeSlotId(), saved.getGuestCount().value());
+        return new SlotReturnInfo(toResult(saved, java.util.Collections.emptyList()), saved.getId(), saved.getTimeSlotId(), saved.getGuestCount().value());
     }
 
     // ── delete ──────────────────────────────────────────────────────────────
@@ -297,28 +298,30 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     @Override
     @Caching(evict = {
             @CacheEvict(cacheNames = "reservation:list",   allEntries = true),
-            @CacheEvict(cacheNames = "reservation:detail", key = "#command.userId().toString() + ':' + #command.reservationId().toString()")
+            @CacheEvict(cacheNames = "reservation:detail", key = "#result.userId() + ':' + #result.reservationId()")
     })
-    public void delete(DeleteReservationCommand command) {
+    public ReservationResult delete(DeleteReservationCommand command) {
         // 1단계: DB 전용 트랜잭션
-        SlotReturnInfo slotInfo = writeTx.execute(status -> deleteRecord(command));
+        SlotReturnInfo slotInfo = Objects.requireNonNull(writeTx.execute(status -> deleteRecord(command)));
 
         // 2단계: 필요 시 슬롯 복구 베스트-에포트 (Feign 호출, DB 커넥션 미점유)
-        if (slotInfo != null) {
+        if (slotInfo.timeSlotId() != null) {
             tryRestoreSlotQuietly(slotInfo.timeSlotId(), slotInfo.reservationId(), "delete", slotInfo.guestCount());
         }
+        return slotInfo.result();
     }
 
     private SlotReturnInfo deleteRecord(DeleteReservationCommand command) {
         Reservation reservation = findAndVerifyOwnership(command.reservationId(), command.userId(), command.userRole());
         reservationRepository.delete(reservation.getId(), command.userId());
+        ReservationResult result = toResult(reservation, java.util.Collections.emptyList());
         if (reservation.requiresSlotReturn()) {
             outboxEventPort.recordReservationDeleted(
                     reservation.getId(), reservation.getUserId(), reservation.getRestaurantId(),
                     reservation.getTimeSlotId(), reservation.getGuestCount().value(), LocalDateTime.now());
-            return new SlotReturnInfo(reservation.getId(), reservation.getTimeSlotId(), reservation.getGuestCount().value());
+            return new SlotReturnInfo(result, reservation.getId(), reservation.getTimeSlotId(), reservation.getGuestCount().value());
         }
-        return null;
+        return new SlotReturnInfo(result, null, null, 0);
     }
 
     // ── checkIn ─────────────────────────────────────────────────────────────
@@ -429,7 +432,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
     private record SlotSnapshot(UUID timeSlotId, LocalDate reservedDate, int guestCount, Long version) {}
 
-    private record SlotReturnInfo(UUID reservationId, UUID timeSlotId, int guestCount) {}
+    private record SlotReturnInfo(ReservationResult result, UUID reservationId, UUID timeSlotId, int guestCount) {}
 
     private record SlotChange(
             boolean needsDeduct, UUID deductTimeSlotId, int deductCount,
