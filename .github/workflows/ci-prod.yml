@@ -31,7 +31,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Run tests                          # 테스트 실행
-        run: ./gradlew test --no-daemon
+        run: ./gradlew test --no-daemon -Dspring.profiles.active=test
 
       - name: Generate image tag        # pr이 아닌 push 일때 이미지 태그 생성
         if: github.event_name == 'push' # 커밋 기반으로 어떤 코드 버전이 배포됐는지 정확히 추적 가능
