@@ -34,10 +34,15 @@ public class OutboxEventScheduler {
 
     @Scheduled(fixedDelayString = "${outbox.scheduler.fixed-delay-ms:1000}")
     public void publishPendingEvents() {
-        // 짧은 트랜잭션으로 PENDING 이벤트 조회 후 즉시 커밋 — DB 락 최소화
-        List<OutboxEventJpaEntity> events = transactionTemplate.execute(
-                tx -> outboxEventJpaRepository.findPendingForProcessing()
-        );
+        // PENDING 조회 + PROCESSING 전이를 한 트랜잭션으로 원자적 처리.
+        // 커밋 후 다른 인스턴스가 같은 이벤트를 조회해도 PENDING이 아니므로 중복 발행 방지.
+        List<OutboxEventJpaEntity> events = transactionTemplate.execute(tx -> {
+            List<OutboxEventJpaEntity> pending = outboxEventJpaRepository.findPendingForProcessing();
+            if (pending == null || pending.isEmpty()) return pending;
+            pending.forEach(OutboxEventJpaEntity::markProcessing);
+            outboxEventJpaRepository.saveAll(pending);
+            return pending;
+        });
         if (events == null || events.isEmpty()) {
             return;
         }
@@ -71,6 +76,9 @@ public class OutboxEventScheduler {
                     if (managed.getRetryCount() >= MAX_RETRY) {
                         managed.markFailed();
                         log.error("[Outbox] 최대 재시도 초과 FAILED 마킹 — id={}, type={}", managed.getId(), managed.getEventType());
+                    } else {
+                        // 다음 폴링 주기에 재시도되도록 PENDING으로 복귀
+                        managed.markPending();
                     }
                 }
                 return outboxEventJpaRepository.save(managed);
