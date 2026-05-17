@@ -1,0 +1,59 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE:10}
+      minimum-idle: ${SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE:10}
+      connection-timeout: ${SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT:30000}
+
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: reservation_service
+        jdbc:
+          batch_size: 30
+        order_inserts: true
+        order_updates: true
+        format_sql: true
+    open-in-view: false
+
+  cloud: # 10.으로 시작하는 ip가 유레카에 우선 등록되도록, 다른 서비스가 찾을 수 있도록
+    inetutils:
+      ignored-interfaces:
+        - "lo"
+        - "docker.*"
+        - "veth.*"
+      preferred-networks:
+        - "10.0"           # 본인 VPC CIDR 첫 두 옥텟
+      use-only-site-local-interfaces: true
+
+
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:false}
+    service-url:
+      defaultZone: http://${EUREKA_HOST}:${EUREKA_PORT}/eureka/
+  instance:
+    prefer-ip-address: true
+
+
+management: # actuator
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
