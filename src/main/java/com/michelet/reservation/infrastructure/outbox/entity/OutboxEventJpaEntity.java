@@ -67,6 +67,10 @@ public class OutboxEventJpaEntity {
         return e;
     }
 
+    public void markProcessing() {
+        this.status = OutboxStatus.PROCESSING;
+    }
+
     public void markProcessed() {
         this.status = OutboxStatus.PROCESSED;
         this.processedAt = LocalDateTime.now();
@@ -74,6 +78,10 @@ public class OutboxEventJpaEntity {
 
     public void incrementRetry() {
         this.retryCount++;
+    }
+
+    public void markPending() {
+        this.status = OutboxStatus.PENDING;
     }
 
     public void markFailed() {

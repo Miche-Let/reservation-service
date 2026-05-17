@@ -16,6 +16,7 @@ import com.michelet.reservation.domain.repository.ReservationRepository;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
@@ -25,6 +26,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReservationQueryServiceImpl implements ReservationQueryService {
@@ -50,9 +52,13 @@ public class ReservationQueryServiceImpl implements ReservationQueryService {
         Cache listCache = cacheManager.getCache("reservation:list");
 
         if (listCache != null) {
-            ReservationListCachePage hit = listCache.get(key, ReservationListCachePage.class);
-            if (hit != null) {
-                return new PageImpl<>(hit.content, pageable, hit.totalElements);
+            try {
+                ReservationListCachePage hit = listCache.get(key, ReservationListCachePage.class);
+                if (hit != null) {
+                    return new PageImpl<>(hit.content, pageable, hit.totalElements);
+                }
+            } catch (RuntimeException e) {
+                log.warn("[Cache] list cache get 실패 — key={}", key, e);
             }
         }
 
@@ -65,7 +71,11 @@ public class ReservationQueryServiceImpl implements ReservationQueryService {
         long total = page.getTotalElements();
 
         if (listCache != null) {
-            listCache.put(key, new ReservationListCachePage(content, total));
+            try {
+                listCache.put(key, new ReservationListCachePage(content, total));
+            } catch (RuntimeException e) {
+                log.warn("[Cache] list cache put 실패 — key={}", key, e);
+            }
         }
 
         return new PageImpl<>(content, pageable, total);
