@@ -4,6 +4,7 @@ server:
 spring:
   application:
     name: reservation-service
+
   management:
     endpoints:
       web:

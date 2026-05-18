@@ -79,14 +79,16 @@ jobs:
             .containerDefinitions |= map(
               if .name == $CN then
                 .image = $IMG
-                | .environment = [
-                    {"name":"SPRING_PROFILES_ACTIVE","value":$SPRING_PROFILES_ACTIVE},
-                    {"name":"SERVER_PORT","value":$SERVER_PORT},
-                    {"name":"EUREKA_ENABLED","value":$EUREKA_ENABLED},
-                    {"name":"EUREKA_HOST","value":$EUREKA_HOST},
-                    {"name":"EUREKA_PORT","value":$EUREKA_PORT},
-                    {"name":"JWT_SECRET","value":$JWT_SECRET}
-                  ]
+                | .environment = (
+                    [
+                      {"name":"SPRING_PROFILES_ACTIVE","value":$SPRING_PROFILES_ACTIVE},
+                      {"name":"SERVER_PORT","value":$SERVER_PORT},
+                      {"name":"EUREKA_ENABLED","value":$EUREKA_ENABLED},
+                      {"name":"EUREKA_HOST","value":$EUREKA_HOST},
+                      {"name":"EUREKA_PORT","value":$EUREKA_PORT},
+                      {"name":"JWT_SECRET","value":$JWT_SECRET}
+                    ] + .environment
+                  ) | unique_by(.name)
               else .
               end
             )
