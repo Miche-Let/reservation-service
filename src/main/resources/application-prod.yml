@@ -59,7 +59,7 @@ management: # actuator
       show-details: always
   health:
     kafka:
-      enabled: ${KAFKA_HEALTH_ENABLED:true}
+      enabled: ${KAFKA_HEALTH_ENABLED:false}
 
 
 waiting:
