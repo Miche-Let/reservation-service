@@ -87,8 +87,9 @@ jobs:
                       {"name":"EUREKA_HOST","value":$EUREKA_HOST},
                       {"name":"EUREKA_PORT","value":$EUREKA_PORT},
                       {"name":"JWT_SECRET","value":$JWT_SECRET}
-                    ] + .environment
-                  ) | unique_by(.name)
+                    ] + (.environment // [])
+                    | unique_by(.name)
+                  )
               else .
               end
             )

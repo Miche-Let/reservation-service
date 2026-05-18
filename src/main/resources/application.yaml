@@ -1,18 +1,18 @@
 server:
   port: ${SERVER_PORT:19500}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, health, info
+  metrics:
+    tags:
+      application: reservation-service
+
 spring:
   application:
     name: reservation-service
-
-  management:
-    endpoints:
-      web:
-        exposure:
-          include: prometheus, health, info
-    metrics:
-      tags:
-        application: reservation-service
 
   cache:
     type: redis
