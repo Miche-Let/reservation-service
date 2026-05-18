@@ -70,7 +70,7 @@ jobs:
             --arg CN "${CONTAINER_NAME}" \
             --arg IMG "${IMAGE_URI}" \
             --arg SPRING_PROFILES_ACTIVE "prod" \
-            --arg SERVER_PORT "19000" \
+            --arg SERVER_PORT "19500" \
             --arg EUREKA_ENABLED "${{ vars.EUREKA_ENABLED }}" \
             --arg EUREKA_HOST "${{ vars.EUREKA_HOST }}" \
             --arg EUREKA_PORT "${{ vars.EUREKA_PORT }}" \

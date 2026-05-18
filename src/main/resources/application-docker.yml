@@ -1,0 +1,32 @@
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  datasource:
+    url: jdbc:postgresql://db:5432/${POSTGRES_DB:michelet_db}
+    username: ${POSTGRES_USER:admin}
+    password: ${POSTGRES_PASSWORD:admin}
+
+  data:
+    redis:
+      host: redis
+      port: 6379
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+  kafka:
+    bootstrap-servers: kafka:29092
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+
+feign:
+  timeslot-service:
+    url: http://timeslot-service:19400
+  waiting-service:
+    url: http://waiting-service:19200

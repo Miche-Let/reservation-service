@@ -57,3 +57,13 @@ management: # actuator
   endpoint:
     health:
       show-details: always
+
+
+waiting:
+  stub: false
+
+timeslot:
+  stub: false
+
+kafka:
+  stub: false
