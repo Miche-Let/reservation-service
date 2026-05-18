@@ -1,6 +1,15 @@
 server:
   port: ${SERVER_PORT:19500}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, health, info
+  metrics:
+    tags:
+      application: reservation-service
+
 spring:
   application:
     name: reservation-service
@@ -21,14 +30,11 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
-kafka:
-  stub: ${KAFKA_STUB:false}
+  cloud:
+    discovery:
+      enabled: true
 
 feign:
-  timeslot-service:
-    url: ${FEIGN_TIMESLOT_SERVICE_URL:http://localhost:19400}
-  waiting-service:
-    url: ${FEIGN_WAITING_SERVICE_URL:http://localhost:19300}
   client:
     config:
       timeslot-service:
@@ -45,7 +51,6 @@ outbox:
 noshow:
   scheduler:
     fixed-delay-ms: ${NOSHOW_SCHEDULER_FIXED_DELAY_MS:60000}
-
 
 internal:
   auth:

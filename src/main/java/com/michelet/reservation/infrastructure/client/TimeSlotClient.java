@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 @FeignClient(
         name = "timeslot-service",
-        url = "${feign.timeslot-service.url}",
         configuration = FeignTimeSlotConfig.class
 )
 public interface TimeSlotClient {

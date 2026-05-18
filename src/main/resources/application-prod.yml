@@ -57,3 +57,16 @@ management: # actuator
   endpoint:
     health:
       show-details: always
+  health:
+    kafka:
+      enabled: ${KAFKA_HEALTH_ENABLED:false}
+
+
+waiting:
+  stub: false
+
+timeslot:
+  stub: false
+
+kafka:
+  stub: ${KAFKA_STUB:true}

@@ -70,7 +70,7 @@ jobs:
             --arg CN "${CONTAINER_NAME}" \
             --arg IMG "${IMAGE_URI}" \
             --arg SPRING_PROFILES_ACTIVE "prod" \
-            --arg SERVER_PORT "19000" \
+            --arg SERVER_PORT "19500" \
             --arg EUREKA_ENABLED "${{ vars.EUREKA_ENABLED }}" \
             --arg EUREKA_HOST "${{ vars.EUREKA_HOST }}" \
             --arg EUREKA_PORT "${{ vars.EUREKA_PORT }}" \
@@ -79,14 +79,17 @@ jobs:
             .containerDefinitions |= map(
               if .name == $CN then
                 .image = $IMG
-                | .environment = [
-                    {"name":"SPRING_PROFILES_ACTIVE","value":$SPRING_PROFILES_ACTIVE},
-                    {"name":"SERVER_PORT","value":$SERVER_PORT},
-                    {"name":"EUREKA_ENABLED","value":$EUREKA_ENABLED},
-                    {"name":"EUREKA_HOST","value":$EUREKA_HOST},
-                    {"name":"EUREKA_PORT","value":$EUREKA_PORT},
-                    {"name":"JWT_SECRET","value":$JWT_SECRET}
-                  ]
+                | .environment = (
+                    [
+                      {"name":"SPRING_PROFILES_ACTIVE","value":$SPRING_PROFILES_ACTIVE},
+                      {"name":"SERVER_PORT","value":$SERVER_PORT},
+                      {"name":"EUREKA_ENABLED","value":$EUREKA_ENABLED},
+                      {"name":"EUREKA_HOST","value":$EUREKA_HOST},
+                      {"name":"EUREKA_PORT","value":$EUREKA_PORT},
+                      {"name":"JWT_SECRET","value":$JWT_SECRET}
+                    ] + (.environment // [])
+                    | unique_by(.name)
+                  )
               else .
               end
             )

@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "waiting-service", url = "${feign.waiting-service.url}")
+@FeignClient(name = "waiting-service")
 public interface WaitingClient {
 
     @GetMapping("/internal/waitings/verify-token")
