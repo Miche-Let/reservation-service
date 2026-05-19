@@ -14,6 +14,9 @@ spring:
   application:
     name: reservation-service
 
+  jackson:
+    time-zone: Asia/Seoul
+
   cache:
     type: redis
 
