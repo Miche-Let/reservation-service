@@ -17,4 +17,4 @@ RUN chown -R app:app /app
 USER app
 EXPOSE 19500
 
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=Asia/Seoul", "-jar", "/app/app.jar"]
