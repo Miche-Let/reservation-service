@@ -73,6 +73,14 @@ jobs:
             --arg EUREKA_HOST "${{ vars.EUREKA_HOST }}" \
             --arg EUREKA_PORT "${{ vars.EUREKA_PORT }}" \
             --arg JWT_SECRET "${{ secrets.JWT_SECRET }}" \
+            --arg POSTGRES_HOST "${{ vars.POSTGRES_HOST }}" \
+            --arg POSTGRES_PORT "${{ vars.POSTGRES_PORT }}" \
+            --arg POSTGRES_DB "${{ vars.POSTGRES_DB }}" \
+            --arg POSTGRES_USER "${{ vars.POSTGRES_USER }}" \
+            --arg POSTGRES_PASSWORD "${{ secrets.POSTGRES_PASSWORD }}" \
+            --arg REDIS_HOST "${{ vars.REDIS_HOST }}" \
+            --arg REDIS_PORT "${{ vars.REDIS_PORT }}" \
+            --arg INTERNAL_AUTH_SECRET "${{ secrets.INTERNAL_AUTH_SECRET }}" \
             '
             .containerDefinitions |= map(
               if .name == $CN then
@@ -81,10 +89,19 @@ jobs:
                     [
                       {"name":"SPRING_PROFILES_ACTIVE","value":$SPRING_PROFILES_ACTIVE},
                       {"name":"SERVER_PORT","value":$SERVER_PORT},
+                      {"name":"TZ","value":"Asia/Seoul"},
                       {"name":"EUREKA_ENABLED","value":$EUREKA_ENABLED},
                       {"name":"EUREKA_HOST","value":$EUREKA_HOST},
                       {"name":"EUREKA_PORT","value":$EUREKA_PORT},
-                      {"name":"JWT_SECRET","value":$JWT_SECRET}
+                      {"name":"JWT_SECRET","value":$JWT_SECRET},
+                      {"name":"POSTGRES_HOST","value":$POSTGRES_HOST},
+                      {"name":"POSTGRES_PORT","value":$POSTGRES_PORT},
+                      {"name":"POSTGRES_DB","value":$POSTGRES_DB},
+                      {"name":"POSTGRES_USER","value":$POSTGRES_USER},
+                      {"name":"POSTGRES_PASSWORD","value":$POSTGRES_PASSWORD},
+                      {"name":"REDIS_HOST","value":$REDIS_HOST},
+                      {"name":"REDIS_PORT","value":$REDIS_PORT},
+                      {"name":"INTERNAL_AUTH_SECRET","value":$INTERNAL_AUTH_SECRET}
                     ] + (.environment // [])
                     | unique_by(.name)
                   )
