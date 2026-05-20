@@ -46,7 +46,8 @@ jobs:
       - name: Generate image tag
         run: echo "IMAGE_TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-      - name: Configure AWS credentials (OIDC)
+      - name: Configure AWS credentials (OIDC)  # OIDC 기반으로 역할 자격증명
+        if: github.event_name == 'push'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
