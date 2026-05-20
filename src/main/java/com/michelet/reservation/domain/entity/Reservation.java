@@ -113,18 +113,9 @@ public class Reservation {
         if (this.status == ReservationStatus.COMPLETED) {
             return; // 이미 완료된 경우 멱등 처리
         }
-        if (state.status() != ReservationStatus.CONFIRMED) {
-            throw new BusinessException(ReservationErrorCode.INVALID_STATUS_TRANSITION);
-        }
-        LocalDateTime windowStart = noshowDeadline.minusMinutes(60); // noshowDeadline - 60min (= slotStart - 30min)
-        if (now.isBefore(windowStart)) {
-            throw new BusinessException(ReservationErrorCode.CHECK_IN_TOO_EARLY);
-        }
-        if (now.isAfter(noshowDeadline)) {
-            throw new BusinessException(ReservationErrorCode.CHECK_IN_TOO_LATE);
-        }
-        this.status      = state.complete();
-        this.state       = ReservationStateFactory.from(this.status);
+        state.assertCompletable(now, noshowDeadline);
+        this.status = state.complete();
+        this.state = ReservationStateFactory.from(this.status);
         this.checkedInAt = now;
     }
 
@@ -138,13 +129,11 @@ public class Reservation {
     }
 
     public boolean isCancellable() {
-        return state.status() == ReservationStatus.CONFIRMED
-                && !LocalDate.now().isAfter(cancelDeadline);
+        return state.isCancellable(cancelDeadline);
     }
 
     public boolean isModifiable() {
-        return state.status() == ReservationStatus.CONFIRMED
-                && !LocalDate.now().isAfter(modifyDeadline);
+        return state.isModifiable(modifyDeadline);
     }
 
     public boolean requiresRefund() {
@@ -157,18 +146,13 @@ public class Reservation {
             GuestCount newGuestCount,
             LocalDateTime newNoshowDeadline
     ) {
-        if (state.status() != ReservationStatus.CONFIRMED) {
-            throw new BusinessException(ReservationErrorCode.INVALID_STATUS_TRANSITION);
-        }
-        if (LocalDate.now().isAfter(modifyDeadline)) {
-            throw new BusinessException(ReservationErrorCode.MODIFY_DEADLINE_EXCEEDED);
-        }
-        this.timeSlotId      = newTimeSlotId;
-        this.reservedDate    = newReservedDate;
-        this.guestCount      = newGuestCount;
-        this.cancelDeadline  = newReservedDate.minusDays(2);
-        this.modifyDeadline  = newReservedDate.minusDays(2);
-        this.noshowDeadline  = newNoshowDeadline;
+        state.assertModifiable(modifyDeadline);
+        this.timeSlotId = newTimeSlotId;
+        this.reservedDate = newReservedDate;
+        this.guestCount = newGuestCount;
+        this.cancelDeadline = newReservedDate.minusDays(2);
+        this.modifyDeadline = newReservedDate.minusDays(2);
+        this.noshowDeadline = newNoshowDeadline;
     }
 
     private static void validateCreateInput(
