@@ -1,64 +1,64 @@
-#name: CI-PROD
-#
-#on:
-#  pull_request:
-#    branches: [ main ]
-#  push:
-#    branches: [ main ]
-#
-#jobs:
-#  test:
-#    runs-on: ubuntu-latest
-#    permissions:
-#      contents: read
-#
-#    steps:
-#      - name: Checkout
-#        uses: actions/checkout@v4
-#
-#      - name: Set up JDK 17
-#        uses: actions/setup-java@v4
-#        with:
-#          distribution: temurin
-#          java-version: "17"
-#
-#      - name: Set up Gradle
-#        uses: gradle/actions/setup-gradle@v4
-#
-#      - name: Grant execute permission for gradlew
-#        run: chmod +x ./gradlew
-#
-#      - name: Run tests
-#        run: ./gradlew test --no-daemon -Dspring.profiles.active=test
-#
-#  build-and-push:
-#    if: github.event_name == 'push'
-#    needs: test
-#    runs-on: ubuntu-latest
-#    permissions:
-#      contents: read
-#      id-token: write
-#
-#    steps:
-#      - name: Checkout
-#        uses: actions/checkout@v4
-#
-#      - name: Generate image tag
-#        run: echo "IMAGE_TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-#
-#      - name: Configure AWS credentials (OIDC)
-#        uses: aws-actions/configure-aws-credentials@v4
-#        with:
-#          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-#          aws-region: ${{ vars.AWS_REGION }}
-#
-#      - name: Login to Amazon ECR
-#        uses: aws-actions/amazon-ecr-login@v2
-#
-#      - name: Build Docker image
-#        run: |
-#          docker build -t ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} .
-#
-#      - name: Push Docker image to ECR
-#        run: |
-#          docker push ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+name: CI-PROD
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Run tests
+        run: ./gradlew test --no-daemon -Dspring.profiles.active=test
+
+  build-and-push:
+    if: github.event_name == 'push'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate image tag
+        run: echo "IMAGE_TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} .
+
+      - name: Push Docker image to ECR
+        run: |
+          docker push ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
